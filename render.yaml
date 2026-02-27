@@ -1,12 +1,12 @@
 services:
   - type: web
-    name: trimly-backend
+    name: trimly-backend-ramlal
     runtime: node
     rootDir: backend
     plan: free
     buildCommand: npm install
     startCommand: npm start
-    autoDeploy: true
+    autoDeployTrigger: commit
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV

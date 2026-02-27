@@ -19,6 +19,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Lightweight endpoints for uptime checks and smoke testing.
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Trimly backend is running'
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'ok'
+  });
+});
+
 // routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/user', require('./routes/user')); // user-specific routes

@@ -1,0 +1,44 @@
+
+/* Tailwind layers - keep the order: base, components, utilities */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS variables map design tokens to meaningful names so components use the exact palette */
+:root{
+  --primary: #ffcc00; /* primary CTA */
+  --primary-hover: #e6b800; /* CTA hover */
+  --bg: #ffffff; /* page background */
+  --input-bg: #f7f7f7; /* inputs */
+  --text-primary: #111; /* main text color */
+}
+
+/* Set full-height for the app container */
+html,body,#root{height:100%;}
+body{
+  /* Apply the Tailwind background utility and primary text color */
+  @apply bg-bg-default text-[var(--text-primary)] antialiased;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+/* Helper utility classes used across components */
+.btn-primary{
+  background-color: var(--primary);
+}
+.btn-primary:hover{
+  background-color: var(--primary-hover);
+}
+
+/* Inputs use a soft off-white background defined by the spec */
+.input-default{
+  background-color: var(--input-bg);
+}
+
+/* Additional utility classes for better layout */
+.shadow-soft{
+  box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+}
+
+.bg-bg-default{
+  background-color: var(--bg);
+}

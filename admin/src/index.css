@@ -1,0 +1,15 @@
+/* Global Tailwind and custom utility styles for admin dashboard. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* custom global styles */
+.bg-bg-default {
+  background-color: #f4f6f8;
+}
+.input-default {
+  @apply border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500;
+}
+.btn-primary {
+  @apply bg-amber-600 text-white font-semibold rounded-lg transition-colors hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500;
+}

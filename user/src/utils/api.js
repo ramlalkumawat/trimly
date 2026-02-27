@@ -1,8 +1,16 @@
 import axios from 'axios';
 
+const rawApiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  '';
+const normalizedApiBaseUrl = rawApiBaseUrl
+  ? (rawApiBaseUrl.endsWith('/api') ? rawApiBaseUrl : `${rawApiBaseUrl.replace(/\/$/, '')}/api`)
+  : '';
+
 // central axios instance for this frontend
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || ''
+  baseURL: normalizedApiBaseUrl
 });
 
 // attach token automatically

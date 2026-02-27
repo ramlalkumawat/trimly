@@ -1,7 +1,10 @@
 import axios from 'axios';
 
 // Central API layer for admin domain endpoints (auth, users, services, etc.).
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:5000';
 
 // Create axios instance
 const api = axios.create({

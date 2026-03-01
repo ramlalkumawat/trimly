@@ -10,6 +10,21 @@ const { configureSocket } = require('./config/socket');
 // load env vars
 dotenv.config();
 
+const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET'];
+const missingRequiredEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+
+if (missingRequiredEnvVars.length) {
+  console.error(
+    `[config] Missing required environment variables: ${missingRequiredEnvVars.join(', ')}`
+  );
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      `Missing required environment variables: ${missingRequiredEnvVars.join(', ')}`
+    );
+  }
+}
+
 // connect database
 connectDB();
 

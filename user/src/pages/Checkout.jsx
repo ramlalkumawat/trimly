@@ -36,8 +36,20 @@ export default function Checkout() {
       setLoading(false);
       return;
     }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('[auth-debug][checkout] Missing token for booking request');
+      setError('Session expired. Please login again.');
+      setLoading(false);
+      nav('/login');
+      return;
+    }
     
     try {
+      console.debug(
+        `[auth-debug][checkout] Sending booking request with Bearer token (length=${token.length})`
+      );
       const res = await api.post('/bookings', {
         serviceId,
         date,
@@ -51,6 +63,10 @@ export default function Checkout() {
               longitude: Number(userLocation.location.longitude)
             }
           : null
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
       
       console.log('Booking created:', res.data.data);

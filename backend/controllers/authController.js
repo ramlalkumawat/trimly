@@ -5,8 +5,22 @@ const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
 // Authentication controller for register/login/session lookup and token lifecycle.
-const signToken = (user) =>
-  jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+const JWT_EXPIRES_IN = '7d';
+const signToken = (user) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+
+  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN
+  });
+
+  console.log(
+    `[auth] Issued JWT for user=${user._id.toString()} role=${user.role} expiresIn=${JWT_EXPIRES_IN}`
+  );
+
+  return token;
+};
 
 const sanitizeUser = (userDoc) => ({
   id: userDoc._id,

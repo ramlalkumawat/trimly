@@ -13,13 +13,47 @@ const api = axios.create({
   baseURL: normalizedApiBaseUrl
 });
 
+const isProtectedEndpoint = (url = '') => {
+  const protectedPrefixes = ['/bookings', '/user', '/auth/me', '/auth/refresh', '/auth/logout'];
+  return protectedPrefixes.some((prefix) => url.startsWith(prefix));
+};
+
 // attach token automatically
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
+  const method = (config.method || 'get').toUpperCase();
+  const endpoint = config.url || '';
+
   if (token) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  if (isProtectedEndpoint(endpoint)) {
+    if (token) {
+      console.debug(
+        `[auth-debug][frontend] ${method} ${endpoint} with Bearer token (length=${token.length})`
+      );
+    } else {
+      console.warn(`[auth-debug][frontend] ${method} ${endpoint} missing auth token`);
+    }
+  }
+
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const method = (error.config?.method || 'get').toUpperCase();
+      const endpoint = error.config?.url || '';
+      const message = error.response?.data?.message || 'Unauthorized';
+      console.warn(`[auth-debug][frontend] 401 ${method} ${endpoint}: ${message}`);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default api;

@@ -2,20 +2,45 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const ErrorResponse = require('../utils/errorResponse');
 
-// Authentication middleware: validates JWT, loads user, and blocks restricted accounts.
-exports.protect = async (req, res, next) => {
-  let token;
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer')) {
-    token = authHeader.split(' ')[1];
+const extractBearerToken = (authHeader = '') => {
+  const parts = authHeader.trim().split(/\s+/);
+  if (parts.length !== 2) {
+    return null;
   }
 
+  const [scheme, token] = parts;
+  if (!/^Bearer$/i.test(scheme) || !token) {
+    return null;
+  }
+  return token;
+};
+
+// Authentication middleware: validates JWT, loads user, and blocks restricted accounts.
+exports.protect = async (req, res, next) => {
+  const authHeader = req.headers.authorization || req.headers.Authorization || '';
+  const token = extractBearerToken(authHeader);
+
+  console.log(
+    `[auth] ${req.method} ${req.originalUrl} authHeaderPresent=${Boolean(authHeader)} tokenPresent=${Boolean(token)}`
+  );
+
   if (!token) {
-    return next(new ErrorResponse('Not authorized, token missing', 401));
+    const message = authHeader
+      ? 'Not authorized, invalid authorization format'
+      : 'Not authorized, token missing';
+    return next(new ErrorResponse(message, 401));
+  }
+
+  if (!process.env.JWT_SECRET) {
+    console.error('[auth] JWT_SECRET is not configured');
+    return next(new ErrorResponse('Server configuration error', 500));
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log(
+      `[auth] Token verified for user=${decoded.id} route=${req.originalUrl} tokenLength=${token.length}`
+    );
     const user = await User.findById(decoded.id).select('-password');
     if (!user) {
       return next(new ErrorResponse('No user found for this token', 401));
@@ -47,6 +72,9 @@ exports.protect = async (req, res, next) => {
     };
     next();
   } catch (err) {
+    console.error(
+      `[auth] Token verification failed on ${req.method} ${req.originalUrl}: ${err.name} ${err.message}`
+    );
     return next(new ErrorResponse('Token invalid or expired', 401));
   }
 };

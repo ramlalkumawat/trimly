@@ -1,16 +1,34 @@
 import axios from 'axios';
 
-const rawApiBaseUrl =
+const rawBackendUrl =
+  import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  '';
-const normalizedApiBaseUrl = rawApiBaseUrl
-  ? (rawApiBaseUrl.endsWith('/api') ? rawApiBaseUrl : `${rawApiBaseUrl.replace(/\/$/, '')}/api`)
+  (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
+const normalizedBackendUrl = rawBackendUrl ? rawBackendUrl.replace(/\/+$/, '') : '';
+const normalizedApiBaseUrl = normalizedBackendUrl
+  ? (normalizedBackendUrl.endsWith('/api')
+      ? normalizedBackendUrl
+      : `${normalizedBackendUrl}/api`)
   : '';
+
+if (!normalizedApiBaseUrl && import.meta.env.PROD) {
+  throw new Error(
+    'Missing VITE_BACKEND_URL. Configure it in Vercel Environment Variables and redeploy.'
+  );
+}
+
+export const API_BASE_URL = normalizedApiBaseUrl;
+export const BACKEND_ORIGIN = normalizedApiBaseUrl.replace(/\/api$/, '');
 
 // central axios instance for this frontend
 const api = axios.create({
-  baseURL: normalizedApiBaseUrl
+  baseURL: normalizedApiBaseUrl,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
 const isProtectedEndpoint = (url = '') => {

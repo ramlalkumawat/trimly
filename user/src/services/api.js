@@ -1,54 +1,39 @@
-const rawApiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_API_URL ||
-  'http://localhost:5000/api';
-const API_BASE_URL = rawApiBaseUrl.endsWith('/api')
-  ? rawApiBaseUrl
-  : `${rawApiBaseUrl.replace(/\/$/, '')}/api`;
+import api from '../utils/api';
 
-// Generic API request function
+// Generic API request helper using the shared axios instance.
 const apiRequest = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
-  
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
-    },
-    ...options
-  };
+  const method = (options.method || 'GET').toLowerCase();
+  const token = options.token;
 
   try {
-    const response = await fetch(url, config);
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || 'API request failed');
-    }
-    
-    return data;
+    const response = await api.request({
+      url: endpoint,
+      method,
+      data: options.data,
+      params: options.params,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers
+      }
+    });
+
+    return response.data;
   } catch (error) {
-    console.error('API Error:', error);
-    throw error;
+    const message = error.response?.data?.message || error.message || 'API request failed';
+    throw new Error(message);
   }
 };
 
 // Authenticated API request
 const authenticatedRequest = async (endpoint, token, options = {}) => {
-  return apiRequest(endpoint, {
-    ...options,
-    headers: {
-      ...options.headers,
-      'Authorization': `Bearer ${token}`
-    }
-  });
+  return apiRequest(endpoint, { ...options, token });
 };
 
 // Booking API functions
 export const createBooking = async (bookingData, token) => {
   return authenticatedRequest('/bookings', token, {
     method: 'POST',
-    body: JSON.stringify(bookingData)
+    data: bookingData
   });
 };
 
@@ -63,7 +48,7 @@ export const getActiveBookings = async (token) => {
 export const cancelBooking = async (bookingId, token) => {
   return authenticatedRequest(`/bookings/${bookingId}/status`, token, {
     method: 'PATCH',
-    body: JSON.stringify({ status: 'cancelled' })
+    data: { status: 'cancelled' }
   });
 };
 
@@ -84,21 +69,21 @@ export const getServiceById = async (serviceId) => {
 export const updateProfile = async (profileData, token) => {
   return authenticatedRequest('/user/profile', token, {
     method: 'PUT',
-    body: JSON.stringify(profileData)
+    data: profileData
   });
 };
 
 export const addAddress = async (address, token) => {
   return authenticatedRequest('/user/addresses', token, {
     method: 'POST',
-    body: JSON.stringify(address)
+    data: address
   });
 };
 
 export const updateLocation = async (location, token) => {
   return authenticatedRequest('/user/location', token, {
     method: 'PUT',
-    body: JSON.stringify(location)
+    data: location
   });
 };
 
@@ -106,14 +91,14 @@ export const updateLocation = async (location, token) => {
 export const login = async (credentials) => {
   return apiRequest('/auth/login', {
     method: 'POST',
-    body: JSON.stringify(credentials)
+    data: credentials
   });
 };
 
 export const register = async (userData) => {
   return apiRequest('/auth/register', {
     method: 'POST',
-    body: JSON.stringify(userData)
+    data: userData
   });
 };
 
@@ -125,17 +110,17 @@ export const forgotPassword = async (loginId) => {
 
   return apiRequest('/auth/forgot-password', {
     method: 'POST',
-    body: JSON.stringify(payload)
+    data: payload
   });
 };
 
 // Helper function for handling API errors
 export const handleApiError = (error) => {
-  if (error.message) {
-    return error.message;
-  }
   if (error.response?.data?.message) {
     return error.response.data.message;
+  }
+  if (error.message) {
+    return error.message;
   }
   return 'An unexpected error occurred';
 };
@@ -155,13 +140,13 @@ export const getCurrentLocation = () => {
           longitude: position.coords.longitude
         });
       },
-      (error) => {
+      () => {
         reject(new Error('Unable to retrieve your location'));
       },
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 300000 // 5 minutes
+        maximumAge: 300000
       }
     );
   });

@@ -7,7 +7,10 @@ const getSocketBaseUrl = () => {
     return envBase;
   }
 
-  const apiBase = import.meta.env.VITE_API_BASE_URL;
+  const apiBase =
+    import.meta.env.VITE_BACKEND_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL;
   if (apiBase) {
     return apiBase.replace(/\/api\/?$/, '');
   }

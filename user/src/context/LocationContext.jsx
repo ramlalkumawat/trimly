@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from '../utils/api';
 
 // Global location state: persists in localStorage and syncs with backend when logged in.
 const LocationContext = createContext();
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export const useLocation = () => {
   const context = useContext(LocationContext);
@@ -52,34 +52,18 @@ export const LocationProvider = ({ children }) => {
     setError(null);
 
     try {
-      const url = API_BASE_URL.endsWith('/api')
-        ? `${API_BASE_URL}/user/location`
-        : `${API_BASE_URL}/api/user/location`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(locationData)
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Token expired, clear auth
-          localStorage.removeItem('token');
-          localStorage.removeItem('role');
-          localStorage.removeItem('user');
-          throw new Error('Session expired. Please login again.');
-        }
-        throw new Error('Failed to save location');
-      }
-
-      const result = await response.json();
+      await api.post('/user/location', locationData);
       setLocation(locationData);
       return locationData;
     } catch (err) {
-      setError(err.message);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('user');
+        setError('Session expired. Please login again.');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to save location');
+      }
       // Still save to local state even if backend fails
       setLocation(locationData);
       throw err;

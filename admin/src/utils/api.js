@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { beginRequest, endRequest } from './loadingBus';
 
 // Central API layer for admin domain endpoints (auth, users, services, etc.).
 const API_BASE_URL =
@@ -18,6 +19,12 @@ const api = axios.create({
 // Request interceptor to attach JWT token
 api.interceptors.request.use(
   (config) => {
+    const skipGlobalLoader = config.headers?.['x-skip-global-loader'] === 'true';
+    if (!skipGlobalLoader) {
+      beginRequest();
+      config.__loaderTracked = true;
+    }
+
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -32,9 +39,16 @@ api.interceptors.request.use(
 // Response interceptor for global error handling
 api.interceptors.response.use(
   (response) => {
+    if (response.config?.__loaderTracked) {
+      endRequest();
+    }
     return response;
   },
   (error) => {
+    if (error.config?.__loaderTracked) {
+      endRequest();
+    }
+
     // Handle 401 Unauthorized - auto logout
     if (error.response?.status === 401) {
       localStorage.removeItem('token');

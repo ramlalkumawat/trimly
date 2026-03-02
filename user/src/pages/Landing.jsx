@@ -1,418 +1,177 @@
-import React, {useState, useRef, useEffect} from 'react'
-import { useNavigate } from 'react-router-dom'
-import Input from '../components/Input'
-import { MapPin, Loader2, X } from 'lucide-react'
-import { useLocation } from '../context/LocationContext'
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { HomeSticker } from '../components/illustrations/SalonIllustrations';
 
-// Landing / hero page. Centered layout with headline, location input and primary CTA.
-export default function Landing(){
-  // `loc` holds the controlled value for the location input
-  const [loc, setLoc] = useState('')
-  const [suggestions, setSuggestions] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [currentLocationLoading, setCurrentLocationLoading] = useState(false)
-  const [error, setError] = useState('')
-  
-  const inputRef = useRef(null)
-  const autocompleteSuggestion = useRef(null)
-  const placeService = useRef(null)
-  const geocoder = useRef(null)
-  
-  const nav = useNavigate()
-  const { updateLocation } = useLocation()
+const featuredServices = [
+  {
+    title: "Men's Haircut",
+    description: 'Clean cut, fade, and finishing at your doorstep.',
+    image: 'https://images.pexels.com/photos/1319461/pexels-photo-1319461.jpeg?auto=compress&cs=tinysrgb&w=1200'
+  },
+  {
+    title: 'Beard Styling',
+    description: 'Sharp beard lines and grooming with premium tools.',
+    image: 'https://images.pexels.com/photos/1813272/pexels-photo-1813272.jpeg?auto=compress&cs=tinysrgb&w=1200'
+  },
+  {
+    title: 'Facial and Cleanup',
+    description: 'Glow-focused skincare treatment for healthier skin.',
+    image: 'https://images.pexels.com/photos/3993449/pexels-photo-3993449.jpeg?auto=compress&cs=tinysrgb&w=1200'
+  },
+  {
+    title: 'Hair Spa',
+    description: 'Deep conditioning and scalp rejuvenation session.',
+    image: 'https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?auto=compress&cs=tinysrgb&w=1200'
+  }
+];
 
-  // Initialize Google Maps services
-  useEffect(() => {
-    const initializeServices = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        try {
-          const mapElement = document.createElement('div');
-          autocompleteSuggestion.current = new window.google.maps.places.AutocompleteSuggestion();
-          placeService.current = new window.google.maps.places.Place({ id: 'dummy' });
-          geocoder.current = new window.google.maps.Geocoder();
-          console.log('Google Maps services initialized successfully');
-          setError('');
-        } catch (error) {
-          console.error('Failed to initialize Google Maps services:', error);
-          setError('Location services temporarily unavailable. You can still type your location manually.');
-        }
-      } else {
-        console.log('Google Maps API not loaded yet, retrying...');
-        setTimeout(initializeServices, 1000);
-      }
-    };
+const trustStats = [
+  { label: 'Avg. Rating', value: '4.8/5' },
+  { label: 'Bookings Done', value: '10K+' },
+  { label: 'Verified Pros', value: '500+' }
+];
 
-    // Start initialization
-    initializeServices();
-    
-    // Also set up a one-time check after 5 seconds
-    const fallbackTimer = setTimeout(() => {
-      if (!autocompleteSuggestion.current) {
-        console.log('Google Maps failed to load after 5 seconds');
-        setError('Location services unavailable. You can still type your location manually.');
-      }
-    }, 5000);
-    
-    return () => {
-      clearTimeout(fallbackTimer);
-    };
-  }, []);
-
-  // Fetch place suggestions
-  const fetchSuggestions = async (query) => {
-    if (!query || !autocompleteSuggestion.current || !window.google || !window.google.maps.places) {
-      setSuggestions([]);
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const results = await new Promise((resolve, reject) => {
-        autocompleteSuggestion.current.getPlaceSuggestions(
-          {
-            input: query,
-            includedPrimaryTypes: ['geocode', 'establishment'],
-            region: 'in' // Restrict to India
-          },
-          (results, status) => {
-            if (status === (window.google.maps.places?.PlacesServiceStatus?.OK || 'OK')) {
-              resolve(results.suggestions || []);
-            } else {
-              reject(new Error('Failed to fetch suggestions'));
-            }
-          }
-        );
-      });
-
-      setSuggestions(results || []);
-    } catch (err) {
-      console.error('Suggestions fetch error:', err);
-      setError('Failed to fetch location suggestions');
-      setSuggestions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loc) {
-        fetchSuggestions(loc);
-        setShowSuggestions(true);
-      } else {
-        setSuggestions([]);
-        setShowSuggestions(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [loc]);
-
-  // Handle suggestion selection
-  const handleSuggestionSelect = async (place) => {
-    if (!placeService.current || !window.google || !window.google.maps.places) {
-      setError('Location services not available');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    setShowSuggestions(false);
-
-    try {
-      const selectedPlace = new window.google.maps.places.Place({ id: place.placeId || place.place_id });
-      await selectedPlace.fetchFields({
-        fields: ['displayName', 'formattedAddress', 'location', 'addressComponents']
-      });
-
-      const locationData = {
-        address: selectedPlace.formattedAddress || selectedPlace.displayName,
-        latitude: selectedPlace.location?.lat(),
-        longitude: selectedPlace.location?.lng(),
-        placeId: place.placeId || place.place_id
-      };
-
-      // Update input and global state
-      setLoc(selectedPlace.formattedAddress || selectedPlace.displayName);
-      await updateLocation(locationData);
-    } catch (err) {
-      console.error('Place details error:', err);
-      setError('Failed to get location details');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle current location
-  const handleCurrentLocation = async () => {
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser');
-      return;
-    }
-
-    setCurrentLocationLoading(true);
-    setError('');
-
-    try {
-      const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 300000 // 5 minutes
-          }
-        );
-      });
-
-      const { latitude, longitude } = position.coords;
-
-      // Reverse geocode to get address
-      if (!geocoder.current || !window.google || !window.google.maps) {
-        setError('Location services not available');
-        return;
-      }
-
-      const results = await new Promise((resolve, reject) => {
-        geocoder.current.geocode(
-          { location: { lat: latitude, lng: longitude } },
-          (results, status) => {
-            if (status === (window.google.maps?.GeocoderStatus?.OK || 'OK') && results[0]) {
-              resolve(results);
-            } else {
-              reject(new Error('Failed to get address from coordinates'));
-            }
-          }
-        );
-      });
-
-      const locationData = {
-        address: results[0].formatted_address,
-        latitude,
-        longitude,
-        placeId: null
-      };
-
-      // Update input and global state
-      setLoc(results[0].formatted_address);
-      await updateLocation(locationData);
-    } catch (err) {
-      console.error('Current location error:', err);
-      console.error('Error code:', err.code);
-      console.error('Error message:', err.message);
-      
-      if (err.code === 1) {
-        setError('Location access denied. Please enable location permissions in your browser settings.');
-      } else if (err.code === 2) {
-        setError('Location unavailable. Please check your device location settings.');
-      } else if (err.code === 3) {
-        setError('Location request timed out. Please try again.');
-      } else if (err.message && err.message.includes('Failed to get address from coordinates')) {
-        setError('Unable to determine your address. Please try entering your location manually.');
-      } else {
-        setError('Failed to get your location. Please try entering your location manually.');
-      }
-    } finally {
-      setCurrentLocationLoading(false);
-    }
-  };
-
-  // Handle input change
-  const handleInputChange = (e) => {
-    setLoc(e.target.value);
-    setError('');
-  };
-
-  // Handle input focus
-  const handleInputFocus = () => {
-    if (loc) {
-      setShowSuggestions(true);
-    }
-  };
-
-  // Handle click outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (inputRef.current && !inputRef.current.contains(event.target)) {
-        setShowSuggestions(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+export default function Landing() {
+  const nav = useNavigate();
 
   return (
-    <>
-      {/* Hero Section */}
-      <section className="min-h-[calc(100vh-4.5rem)] flex items-center">
-        <div className="w-full max-w-3xl mx-auto px-4 text-center">
-          {/* Headline - bold, large, and using primary text color */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-[var(--text-primary)]">Book Professional Salon Services At Home in <span className="text-yellow-500 font-bold">30 Minutes</span></h1>
-          <p className="mt-4 text-gray-600 text-sm sm:text-base">Trusted professionals, easy booking, and salon-quality results at your doorstep.</p>
+    <div className="space-y-16 sm:space-y-20 section-fade">
+      <section className="relative overflow-hidden rounded-3xl border border-amber-100 bg-gradient-to-br from-yellow-50 via-white to-amber-50">
+        <div className="absolute -top-16 -left-10 w-52 h-52 rounded-full bg-amber-300/25 blur-3xl" />
+        <div className="absolute -bottom-16 -right-12 w-56 h-56 rounded-full bg-orange-300/20 blur-3xl" />
 
-          <div className="mt-8">
-            {/* Enhanced Location input with Google Places Autocomplete */}
-            <div className="flex flex-col gap-4 max-w-md mx-auto">
-              <div className="text-left relative" ref={inputRef}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Location</label>
-                <div className="relative">
-                  <Input 
-                    value={loc} 
-                    onChange={handleInputChange}
-                    onFocus={handleInputFocus}
-                    placeholder="Enter your city" 
-                    className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400 pr-10" 
-                  />
-                  {loading && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-                    </div>
-                  )}
-                </div>
-                
-                {/* Google Places Suggestions Dropdown */}
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto z-50">
-                    {suggestions.map((suggestion) => (
-                      <button
-                        key={suggestion.placeId || suggestion.place_id}
-                        onClick={() => handleSuggestionSelect(suggestion)}
-                        className="w-full text-left p-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-start gap-3"
-                      >
-                        <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900 truncate">
-                            {suggestion.text?.mainText || suggestion.structured_formatting?.main_text}
-                          </div>
-                          <div className="text-xs text-gray-500 truncate">
-                            {suggestion.text?.secondaryText || suggestion.structured_formatting?.secondary_text}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+        <div className="relative grid lg:grid-cols-2 gap-8 px-5 sm:px-8 lg:px-10 py-8 sm:py-10 items-center">
+          <div>
+            <span className="inline-flex text-[11px] tracking-wide uppercase px-3 py-1 rounded-full bg-gray-900 text-white">
+              Salon Services at Home
+            </span>
+            <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight text-[var(--text-primary)]">
+              Book Professional Salon Services At Home in
+              <span className="text-yellow-600"> 30 Minutes</span>
+            </h1>
+            <p className="mt-4 text-sm sm:text-base text-gray-600 max-w-xl">
+              Simple booking, hygienic tools, and trained professionals for premium grooming and beauty care at your convenience.
+            </p>
 
-                {/* Error message */}
-                {error && (
-                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-xs text-red-600">{error}</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Use Current Location Button */}
-              <button
-                onClick={handleCurrentLocation}
-                disabled={currentLocationLoading}
-                className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {currentLocationLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <MapPin className="w-4 h-4" />
-                )}
-                {currentLocationLoading ? 'Getting Location...' : 'Use Current Location'}
+            <div className="mt-7 flex flex-col sm:flex-row gap-3">
+              <button onClick={() => nav('/services')} className="btn-primary px-7 py-3 rounded-2xl font-semibold text-black">
+                Book Your Services
               </button>
-              
-              <button onClick={()=>nav('/services')} className="w-full px-6 py-3 rounded-2xl btn-primary font-semibold">Find Services</button>
+              <button
+                onClick={() => nav('/services')}
+                className="px-7 py-3 rounded-2xl border border-gray-200 bg-white text-gray-800 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Explore Packages
+              </button>
             </div>
-            <div className="mt-4 text-xs text-gray-500">We'll show nearby professionals available in your area.</div>
+
+            <div className="grid grid-cols-3 gap-3 mt-8 max-w-md">
+              {trustStats.map((item) => (
+                <div key={item.label} className="rounded-xl bg-white border border-gray-100 p-3 shadow-soft">
+                  <div className="text-base sm:text-lg font-bold text-gray-900">{item.value}</div>
+                  <div className="text-[11px] sm:text-xs text-gray-500">{item.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Optional hero visual placeholder for larger screens */}
-          <div className="mt-10 bg-white rounded-2xl shadow-soft p-6 hidden sm:block">
-            <div className="h-48 flex items-center justify-center text-gray-300">Hero Image Placeholder</div>
-          </div>
-        </div>
-      </section>
-
-      {/* What are you looking for? Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-4">What are you looking for?</h2>
-          <p className="text-center text-gray-600 mb-12">Choose from our most popular home salon services</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-6 text-center font-medium bg-white cursor-pointer hover:scale-105">
-              <div className="text-3xl mb-3">💇</div>
-              Haircut at Home
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="col-span-2 rounded-2xl overflow-hidden shadow-soft h-52 sm:h-64">
+              <img
+                src="https://images.pexels.com/photos/7697394/pexels-photo-7697394.jpeg?auto=compress&cs=tinysrgb&w=1400"
+                alt="Salon professional doing hair styling"
+                className="w-full h-full object-cover"
+                loading="eager"
+              />
             </div>
-            <div className="rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-6 text-center font-medium bg-white cursor-pointer hover:scale-105">
-              <div className="text-3xl mb-3">✂️</div>
-              Beard Styling
+            <div className="rounded-2xl overflow-hidden shadow-soft h-36 sm:h-40 bg-white">
+              <img
+                src="https://images.pexels.com/photos/3993133/pexels-photo-3993133.jpeg?auto=compress&cs=tinysrgb&w=1200"
+                alt="Facial treatment service"
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
             </div>
-            <div className="rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-6 text-center font-medium bg-white cursor-pointer hover:scale-105">
-              <div className="text-3xl mb-3">🧴</div>
-              Facial & Cleanup
-            </div>
-            <div className="rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-6 text-center font-medium bg-white cursor-pointer hover:scale-105">
-              <div className="text-3xl mb-3">💆</div>
-              Massage at Home
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Most Booked Services Section */}
-      <section className="py-16">
-        <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-4">Most Booked Services</h2>
-          <p className="text-center text-gray-600 mb-12">Our customers' favorite treatments</p>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="rounded-2xl shadow-lg p-8 bg-white text-center hover:shadow-xl transition-all duration-300">
-              <div className="text-4xl mb-4">💇‍♂️</div>
-              <h3 className="text-xl font-semibold mb-2">Men's Haircut</h3>
-              <p className="text-gray-600">Professional haircut at your convenience</p>
-            </div>
-            <div className="rounded-2xl shadow-lg p-8 bg-white text-center hover:shadow-xl transition-all duration-300">
-              <div className="text-4xl mb-4">✨</div>
-              <h3 className="text-xl font-semibold mb-2">Detan Facial</h3>
-              <p className="text-gray-600">Rejuvenating facial treatment</p>
-            </div>
-            <div className="rounded-2xl shadow-lg p-8 bg-white text-center hover:shadow-xl transition-all duration-300">
-              <div className="text-4xl mb-4">💪</div>
-              <h3 className="text-xl font-semibold mb-2">Deep Tissue Massage</h3>
-              <p className="text-gray-600">Relaxing massage therapy at home</p>
+            <div className="rounded-2xl shadow-soft h-36 sm:h-40 bg-white p-2">
+              <HomeSticker />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Why Choose Trimly? Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-4">Why Choose Trimly?</h2>
-          <p className="text-center text-gray-600 mb-12">Experience the best home salon service</p>
-          <div className="grid md:grid-cols-4 gap-8">
-            <div className="p-6 bg-white rounded-2xl shadow-lg text-center font-semibold hover:shadow-xl transition-all duration-300">
-              <div className="text-3xl mb-3">⏰</div>
-              <h3 className="text-lg mb-2">30-Min Arrival</h3>
-              <p className="text-sm text-gray-600 font-normal">Quick service at your doorstep</p>
+      <section className="section-fade">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-6">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold">Most Booked Services</h2>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">Choose from top-rated salon services curated for home comfort.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          {featuredServices.map((service) => (
+            <article key={service.title} className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-soft card-hover">
+              <div className="h-44 overflow-hidden">
+                <img
+                  src={service.image}
+                  alt={service.title}
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                  loading="lazy"
+                />
+              </div>
+              <div className="p-4">
+                <h3 className="font-semibold text-lg text-gray-900">{service.title}</h3>
+                <p className="mt-1 text-sm text-gray-600">{service.description}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-3xl bg-[#101418] px-5 sm:px-8 py-8 sm:py-10 text-white section-fade">
+        <div className="grid lg:grid-cols-2 gap-8 items-center">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold">Why Customers Prefer Trimly</h2>
+            <p className="mt-3 text-sm sm:text-base text-gray-300">
+              We combine speed, skill, and service quality so your experience feels premium every time.
+            </p>
+            <ul className="mt-6 space-y-3 text-sm text-gray-200">
+              <li className="flex items-start gap-2"><span className="text-yellow-400">•</span><span>Background-verified service professionals.</span></li>
+              <li className="flex items-start gap-2"><span className="text-yellow-400">•</span><span>Transparent pricing before checkout.</span></li>
+              <li className="flex items-start gap-2"><span className="text-yellow-400">•</span><span>Flexible rescheduling from your account.</span></li>
+            </ul>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl overflow-hidden h-36 sm:h-44">
+              <img
+                src="https://images.pexels.com/photos/3993446/pexels-photo-3993446.jpeg?auto=compress&cs=tinysrgb&w=1000"
+                alt="Salon setup at home"
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
             </div>
-            <div className="p-6 bg-white rounded-2xl shadow-lg text-center font-semibold hover:shadow-xl transition-all duration-300">
-              <div className="text-3xl mb-3">👨‍💼</div>
-              <h3 className="text-lg mb-2">Skilled Professionals</h3>
-              <p className="text-sm text-gray-600 font-normal">Experienced and verified experts</p>
+            <div className="rounded-2xl overflow-hidden h-36 sm:h-44">
+              <img
+                src="https://images.pexels.com/photos/3993322/pexels-photo-3993322.jpeg?auto=compress&cs=tinysrgb&w=1000"
+                alt="Professional makeup service"
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
             </div>
-            <div className="p-6 bg-white rounded-2xl shadow-lg text-center font-semibold hover:shadow-xl transition-all duration-300">
-              <div className="text-3xl mb-3">🧼</div>
-              <h3 className="text-lg mb-2">Hygienic Tools</h3>
-              <p className="text-sm text-gray-600 font-normal">Sanitized equipment for safety</p>
-            </div>
-            <div className="p-6 bg-white rounded-2xl shadow-lg text-center font-semibold hover:shadow-xl transition-all duration-300">
-              <div className="text-3xl mb-3">📅</div>
-              <h3 className="text-lg mb-2">Easy Rescheduling</h3>
-              <p className="text-sm text-gray-600 font-normal">Flexible booking management</p>
+            <div className="col-span-2 rounded-2xl bg-white/10 border border-white/10 p-5">
+              <p className="text-sm text-gray-200">
+                Ready for your next grooming session? Browse services, choose your slot, and confirm in under a minute.
+              </p>
+              <button
+                onClick={() => nav('/services')}
+                className="mt-4 px-5 py-2.5 rounded-xl bg-yellow-400 text-black font-semibold hover:bg-yellow-300 transition-colors"
+              >
+                Browse Services
+              </button>
             </div>
           </div>
         </div>
       </section>
-    </>
-  )
+    </div>
+  );
 }

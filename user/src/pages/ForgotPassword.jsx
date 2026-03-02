@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { ArrowLeft, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Input from '../components/Input';
 import api from '../utils/api';
+import { AuthSticker } from '../components/illustrations/SalonIllustrations';
 
-// Password reset request page. Accepts either email or phone as login identifier.
 export default function ForgotPassword() {
   const [loginId, setLoginId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,16 +16,18 @@ export default function ForgotPassword() {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (!loginId.trim()) {
+      setError('Email or phone is required');
+      return;
+    }
+
     setLoading(true);
-
     try {
-      // Backend supports both formats; payload is shaped based on user input.
       const value = loginId.trim();
-      const payload = value.includes('@')
-        ? { email: value.toLowerCase() }
-        : { phone: value };
-
+      const payload = value.includes('@') ? { email: value.toLowerCase() } : { phone: value };
       const response = await api.post('/auth/forgot-password', payload);
+
       if (response.data?.success) {
         setSuccess(response.data.message || 'Password reset request accepted.');
         setLoginId('');
@@ -37,44 +40,63 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4.5rem)] flex items-center">
-      <div className="w-full max-w-sm mx-auto px-4">
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-soft p-6">
-          <h2 className="font-bold text-2xl text-[var(--text-primary)] mb-2">Forgot Password</h2>
-          <p className="text-sm text-gray-600 mb-5">
-            Enter your registered email or phone number.
-          </p>
+    <div className="min-h-[calc(100vh-4rem)] py-8 sm:py-12 flex items-center">
+      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="grid md:grid-cols-2 bg-white rounded-3xl border border-gray-100 shadow-soft overflow-hidden">
+          <section className="hidden md:flex items-center bg-gradient-to-br from-amber-50 to-yellow-100 p-8">
+            <AuthSticker />
+          </section>
 
-          {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
-          {success && <div className="text-green-600 text-sm mb-4">{success}</div>}
+          <section className="p-5 sm:p-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Forgot Password</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Enter your registered email or phone number and we will process your reset request.
+            </p>
 
-          <label className="block text-xs text-gray-600">Email or phone</label>
-          <Input
-            placeholder="e.g. +1 555 0123 or name@email.com"
-            value={loginId}
-            onChange={(e) => setLoginId(e.target.value)}
-            required
-          />
+            {error && (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="mt-4 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                {success}
+              </div>
+            )}
 
-          <button
-            type="submit"
-            className="w-full mt-4 py-3 rounded-2xl btn-primary font-semibold"
-            disabled={loading}
-          >
-            {loading ? 'Submitting...' : 'Send Request'}
-          </button>
+            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email or phone</label>
+                <Input
+                  placeholder="e.g. +91 9999999999 or name@email.com"
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
+                  required
+                  disabled={loading}
+                  error={Boolean(error)}
+                />
+              </div>
 
-          <div className="text-center text-sm text-gray-500 mt-4">
-            Remember password?{' '}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full btn-primary rounded-2xl py-3 font-semibold text-black disabled:opacity-60 disabled:cursor-not-allowed inline-flex justify-center items-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                {loading ? 'Submitting...' : 'Send Request'}
+              </button>
+            </form>
+
             <button
               type="button"
-              className="underline"
+              className="mt-4 inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
               onClick={() => navigate('/login')}
             >
+              <ArrowLeft className="w-4 h-4" />
               Back to Login
             </button>
-          </div>
-        </form>
+          </section>
+        </div>
       </div>
     </div>
   );

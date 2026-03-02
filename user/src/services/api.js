@@ -80,13 +80,6 @@ export const addAddress = async (address, token) => {
   });
 };
 
-export const updateLocation = async (location, token) => {
-  return authenticatedRequest('/user/location', token, {
-    method: 'PUT',
-    data: location
-  });
-};
-
 // Auth functions
 export const login = async (credentials) => {
   return apiRequest('/auth/login', {
@@ -125,33 +118,6 @@ export const handleApiError = (error) => {
   return 'An unexpected error occurred';
 };
 
-// Helper function to get customer location
-export const getCurrentLocation = () => {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by this browser'));
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-      },
-      () => {
-        reject(new Error('Unable to retrieve your location'));
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000
-      }
-    );
-  });
-};
-
 export default {
   createBooking,
   getCustomerBookings,
@@ -162,10 +128,8 @@ export default {
   getServiceById,
   updateProfile,
   addAddress,
-  updateLocation,
   login,
   register,
   forgotPassword,
-  handleApiError,
-  getCurrentLocation
+  handleApiError
 };

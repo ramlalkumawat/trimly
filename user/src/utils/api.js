@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { beginRequest, endRequest } from './loadingBus';
 
 const rawBackendUrl =
   import.meta.env.VITE_BACKEND_URL ||
@@ -41,6 +42,12 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   const method = (config.method || 'get').toUpperCase();
   const endpoint = config.url || '';
+  const skipGlobalLoader = config.headers?.['x-skip-global-loader'] === 'true';
+
+  if (!skipGlobalLoader) {
+    beginRequest();
+    config.__loaderTracked = true;
+  }
 
   if (token) {
     config.headers = config.headers || {};
@@ -61,8 +68,17 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config?.__loaderTracked) {
+      endRequest();
+    }
+    return response;
+  },
   (error) => {
+    if (error.config?.__loaderTracked) {
+      endRequest();
+    }
+
     if (error.response?.status === 401) {
       const method = (error.config?.method || 'get').toUpperCase();
       const endpoint = error.config?.url || '';

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { beginRequest, endRequest } from '../utils/loadingBus';
 
 // Central API client + endpoint helpers for provider/auth/booking operations.
 const rawApiBaseUrl =
@@ -21,6 +22,12 @@ const api = axios.create({
 // Request interceptor to add auth token and cache-busting
 api.interceptors.request.use(
   (config) => {
+    const skipGlobalLoader = config.headers?.['x-skip-global-loader'] === 'true';
+    if (!skipGlobalLoader) {
+      beginRequest();
+      config.__loaderTracked = true;
+    }
+
     const token = localStorage.getItem('providerToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -41,8 +48,17 @@ api.interceptors.request.use(
 
 // Response interceptor to handle common errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config?.__loaderTracked) {
+      endRequest();
+    }
+    return response;
+  },
   (error) => {
+    if (error.config?.__loaderTracked) {
+      endRequest();
+    }
+
     if (error.response?.status === 401) {
       localStorage.removeItem('providerToken');
       window.location.href = '/login';

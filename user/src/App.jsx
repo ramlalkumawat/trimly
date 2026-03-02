@@ -1,31 +1,32 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import ForgotPassword from './pages/ForgotPassword';
-import Services from './pages/Services';
-import ServiceDetail from './pages/ServiceDetail';
-import Slots from './pages/Slots';
-import Checkout from './pages/Checkout';
-import Success from './pages/Success';
-import Profile from './pages/Profile';
-import ProviderDashboard from './pages/ProviderDashboard';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
-import { LocationProvider } from './context/LocationContext';
+import GlobalLoader from './components/common/GlobalLoader';
+import RouteLoader from './components/common/RouteLoader';
+
+const Landing = lazy(() => import('./pages/Landing'));
+const Login = lazy(() => import('./pages/Login'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const Services = lazy(() => import('./pages/Services'));
+const ServiceDetail = lazy(() => import('./pages/ServiceDetail'));
+const Slots = lazy(() => import('./pages/Slots'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const Success = lazy(() => import('./pages/Success'));
+const Profile = lazy(() => import('./pages/Profile'));
+const ProviderDashboard = lazy(() => import('./pages/ProviderDashboard'));
 
 // Top-level application shell. Renders the `Navbar` and the route-based pages.
 export default function App(){
   return (
-    <LocationProvider>
-      {/* App shell: make it a column so footer stays at bottom and main grows as needed */}
-      <div className="min-h-screen bg-bg-default flex flex-col">
-        {/* Persistent header */}
-        <Navbar />
+    <div className="min-h-screen bg-bg-default flex flex-col">
+      {/* Persistent header */}
+      <Navbar />
 
-        {/* Main content area grows to fill available space */}
-        <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8">
+      {/* Main content area grows to fill available space */}
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8">
+        <Suspense fallback={<RouteLoader />}>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
@@ -75,11 +76,12 @@ export default function App(){
               }
             />
           </Routes>
-        </main>
+        </Suspense>
+      </main>
 
-        {/* Footer visible on all pages */}
-        <Footer />
-      </div>
-    </LocationProvider>
+      {/* Footer visible on all pages */}
+      <Footer />
+      <GlobalLoader />
+    </div>
   )
 }

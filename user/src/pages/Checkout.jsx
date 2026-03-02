@@ -1,81 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import Input from '../components/Input';
+import React, { useMemo, useState } from 'react';
+import { CreditCard, Home, IndianRupee, Wallet } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import Input from '../components/Input';
 import api from '../utils/api';
-import { useLocation as useUserLocation } from '../context/LocationContext';
 
-// Checkout page: editable address, choose payment method, and view booking summary.
 export default function Checkout() {
   const location = useLocation();
   const nav = useNavigate();
   const { serviceId, date, time, price } = location.state || {};
-  const userLocation = useUserLocation();
 
   const [address, setAddress] = useState('');
   const [method, setMethod] = useState('card');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const [addressError, setAddressError] = useState('');
 
-  // Pre-fill address from location context
-  useEffect(() => {
-    if (userLocation.location?.address) {
-      setAddress(userLocation.location.address);
+  const tax = useMemo(() => (price ? price * 0.1 : 0), [price]);
+  const total = useMemo(() => (price ? price + tax : 0), [price, tax]);
+
+  const validate = () => {
+    if (!address.trim()) {
+      setAddressError('Please enter service address');
+      return false;
     }
-  }, [userLocation.location]);
-
-  // calculate summary amounts
-  const tax = price ? price * 0.1 : 0;
-  const total = price ? price + tax : 0;
+    if (address.trim().length < 8) {
+      setAddressError('Address is too short');
+      return false;
+    }
+    setAddressError('');
+    return true;
+  };
 
   const handleBook = async () => {
-    setError(null);
-    setLoading(true);
-    
-    if (!address.trim()) {
-      setError('Please enter a service address');
-      setLoading(false);
+    setError('');
+    if (!validate()) {
       return;
     }
 
     const token = localStorage.getItem('token');
     if (!token) {
-      console.warn('[auth-debug][checkout] Missing token for booking request');
       setError('Session expired. Please login again.');
-      setLoading(false);
       nav('/login');
       return;
     }
-    
+
+    setLoading(true);
     try {
-      console.debug(
-        `[auth-debug][checkout] Sending booking request with Bearer token (length=${token.length})`
-      );
-      const res = await api.post('/bookings', {
-        serviceId,
-        date,
-        time,
-        totalAmount: total,
-        address: address.trim(),
-        paymentMethod: method,
-        customerLocation: userLocation.location?.latitude && userLocation.location?.longitude
-          ? {
-              latitude: Number(userLocation.location.latitude),
-              longitude: Number(userLocation.location.longitude)
-            }
-          : null
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
+      const res = await api.post(
+        '/bookings',
+        {
+          serviceId,
+          date,
+          time,
+          totalAmount: total,
+          address: address.trim(),
+          paymentMethod: method
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
-      });
-      
-      console.log('Booking created:', res.data.data);
-      console.log('Navigating to success with booking data...');
-      
-      // pass booking data to success page for display
+      );
+
       nav('/success', { state: { booking: res.data.data } });
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError(err.response?.data?.message || err.message || 'Failed to place booking');
     } finally {
       setLoading(false);
     }
@@ -83,16 +73,16 @@ export default function Checkout() {
 
   if (!serviceId || !date || !time) {
     return (
-      <div className="bg-white rounded-2xl shadow-soft p-6">
-        <div className="text-red-500 mb-4">Missing booking information</div>
-        <div className="text-sm text-gray-600">
+      <div className="bg-white rounded-2xl shadow-soft p-6 border border-gray-100">
+        <div className="text-red-600 mb-4">Missing booking information.</div>
+        <div className="text-sm text-gray-600 space-y-1">
           <p>Service ID: {serviceId || 'missing'}</p>
           <p>Date: {date || 'missing'}</p>
           <p>Time: {time || 'missing'}</p>
         </div>
-        <button 
+        <button
           onClick={() => nav('/services')}
-          className="mt-4 px-4 py-2 rounded-xl bg-primary text-black font-semibold"
+          className="mt-4 px-4 py-2 rounded-xl btn-primary font-semibold text-black"
         >
           Back to Services
         </button>
@@ -101,82 +91,134 @@ export default function Checkout() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-soft p-6">
-      <h2 className="font-bold text-2xl mb-4">Checkout</h2>
-      {error && <div className="text-red-500 mb-4">{error}</div>}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <div className="text-sm text-gray-600 mb-2">Delivery / Service Address</div>
-          <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+    <div className="space-y-6 section-fade">
+      <section className="rounded-3xl border border-amber-100 bg-gradient-to-r from-yellow-50 to-amber-50 px-5 sm:px-7 py-5">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Checkout</h1>
+        <p className="mt-1 text-sm sm:text-base text-gray-600">Review details and confirm your booking.</p>
+      </section>
 
-          <div className="mt-6">
-            <div className="font-semibold mb-2">Payment</div>
-            <label className="flex items-center gap-3">
-              <input
-                type="radio"
-                name="pay"
-                checked={method === 'card'}
-                onChange={() => setMethod('card')}
-              />
-              <span className="text-sm">Card</span>
-            </label>
-            <label className="flex items-center gap-3 mt-2">
-              <input
-                type="radio"
-                name="pay"
-                checked={method === 'cash'}
-                onChange={() => setMethod('cash')}
-              />
-              <span className="text-sm">Cash</span>
-            </label>
-          </div>
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
         </div>
+      )}
 
-        {/* Booking summary is shown in an aside for clarity */}
-        <aside className="bg-gray-50 rounded-xl p-4">
-          <div className="font-semibold">Booking Summary</div>
-          <div className="mt-2 text-sm">Service: {serviceId}</div>
-          <div className="flex justify-between mt-4">
-            <div>Service</div>
-            <div>
-              {new Intl.NumberFormat('en-IN', {
-                style: 'currency',
-                currency: 'INR',
-                maximumFractionDigits: 2,
-              }).format(price)}
+      <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+        <section className="bg-white rounded-2xl shadow-soft border border-gray-100 p-5 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Home className="w-4 h-4 text-amber-500" />
+            <h2 className="font-semibold text-lg">Service Address</h2>
+          </div>
+
+          <Input
+            value={address}
+            onChange={(e) => {
+              setAddress(e.target.value);
+              if (addressError) setAddressError('');
+            }}
+            placeholder="Flat / House no, street, area, city"
+            error={Boolean(addressError)}
+            disabled={loading}
+          />
+          {addressError && <p className="mt-1 text-xs text-red-600">{addressError}</p>}
+
+          <div className="mt-7">
+            <h3 className="font-semibold mb-3">Payment Method</h3>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setMethod('card')}
+                className={`border rounded-xl px-4 py-3 text-left transition-all ${
+                  method === 'card'
+                    ? 'border-amber-300 bg-amber-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                disabled={loading}
+              >
+                <div className="inline-flex items-center gap-2 font-medium text-sm">
+                  <CreditCard className="w-4 h-4" />
+                  Card
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Pay securely with your card</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMethod('cash')}
+                className={`border rounded-xl px-4 py-3 text-left transition-all ${
+                  method === 'cash'
+                    ? 'border-amber-300 bg-amber-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                disabled={loading}
+              >
+                <div className="inline-flex items-center gap-2 font-medium text-sm">
+                  <Wallet className="w-4 h-4" />
+                  Cash
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Pay at the time of service</p>
+              </button>
             </div>
           </div>
-          <div className="flex justify-between mt-2 text-sm text-gray-600">
-            <div>Tax</div>
-            <div>
-              {new Intl.NumberFormat('en-IN', {
-                style: 'currency',
-                currency: 'INR',
-                maximumFractionDigits: 2,
-              }).format(tax)}
+        </section>
+
+        <aside className="bg-white rounded-2xl shadow-soft border border-gray-100 p-5 sm:p-6 h-fit">
+          <h2 className="font-semibold text-lg">Booking Summary</h2>
+          <div className="mt-4 space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Service</span>
+              <span className="font-medium text-right">{serviceId}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Date</span>
+              <span className="font-medium">{date}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Time</span>
+              <span className="font-medium">{time}</span>
             </div>
           </div>
-          <div className="flex justify-between mt-4 font-bold text-lg">
-            <div>Total</div>
-            <div>
-              {new Intl.NumberFormat('en-IN', {
-                style: 'currency',
-                currency: 'INR',
-                maximumFractionDigits: 2,
-              }).format(total)}
+
+          <div className="my-4 border-t border-gray-100" />
+
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span>Service Charge</span>
+              <span>
+                {new Intl.NumberFormat('en-IN', {
+                  style: 'currency',
+                  currency: 'INR',
+                  maximumFractionDigits: 2
+                }).format(price || 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-gray-600">
+              <span>Tax</span>
+              <span>
+                {new Intl.NumberFormat('en-IN', {
+                  style: 'currency',
+                  currency: 'INR',
+                  maximumFractionDigits: 2
+                }).format(tax)}
+              </span>
+            </div>
+            <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between font-bold text-lg">
+              <span>Total</span>
+              <span className="inline-flex items-center gap-1">
+                <IndianRupee className="w-4 h-4" />
+                {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(total)}
+              </span>
             </div>
           </div>
+
+          <button
+            onClick={handleBook}
+            disabled={loading}
+            className="mt-6 w-full rounded-2xl btn-primary py-3.5 font-semibold text-black disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Booking...' : 'Confirm Booking'}
+          </button>
         </aside>
-      </div>
-
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={handleBook}
-          disabled={loading}
-          className="w-full sm:w-auto px-8 py-4 rounded-2xl btn-primary font-semibold text-lg"
-        >
-          {loading ? 'Booking...' : 'Book Now'}
-        </button>
       </div>
     </div>
   );

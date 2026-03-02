@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { beginRequest, endRequest } from '../utils/loadingBus';
 
 const rawApiBaseUrl =
   import.meta.env.VITE_API_BASE_URL ||
@@ -14,12 +15,33 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  const skipGlobalLoader = config.headers?.['x-skip-global-loader'] === 'true';
+  if (!skipGlobalLoader) {
+    beginRequest();
+    config.__loaderTracked = true;
+  }
+
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => {
+    if (response.config?.__loaderTracked) {
+      endRequest();
+    }
+    return response;
+  },
+  (error) => {
+    if (error.config?.__loaderTracked) {
+      endRequest();
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const authAPI = {
   createAccount: (userData) => api.post('/auth/register', { ...userData, role: 'admin' }),

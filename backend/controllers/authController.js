@@ -51,13 +51,66 @@ const canRegisterAdmin = async (adminKey = '') => {
   return false;
 };
 
+const normalizeEmail = (value = '') => value.trim().toLowerCase();
+
+const normalizePhoneForStorage = (value = '') => {
+  const raw = String(value || '').trim();
+  const digitsOnly = raw.replace(/\D/g, '');
+  if (!digitsOnly) {
+    return raw;
+  }
+  return raw.startsWith('+') ? `+${digitsOnly}` : digitsOnly;
+};
+
+const buildPhoneLookupQuery = (value = '') => {
+  const raw = String(value || '').trim();
+  const digitsOnly = raw.replace(/\D/g, '');
+
+  const exactCandidates = new Set(
+    [raw, raw.replace(/\s+/g, ''), raw.replace(/[^\d+]/g, ''), digitsOnly].filter(Boolean)
+  );
+
+  if (digitsOnly) {
+    exactCandidates.add(`+${digitsOnly}`);
+  }
+
+  const conditions = [];
+
+  if (digitsOnly) {
+    const fullDigitsPattern = digitsOnly.split('').join('\\D*');
+    conditions.push({
+      phone: {
+        $regex: new RegExp(`^\\+?\\D*${fullDigitsPattern}\\D*$`)
+      }
+    });
+  }
+
+  if (digitsOnly.length >= 10) {
+    const lastTenDigits = digitsOnly.slice(-10);
+    const lastTenPattern = lastTenDigits.split('').join('\\D*');
+    exactCandidates.add(lastTenDigits);
+    exactCandidates.add(`+${lastTenDigits}`);
+
+    conditions.push({
+      phone: {
+        $regex: new RegExp(`^\\+?\\D*(?:\\d\\D*){0,3}${lastTenPattern}\\D*$`)
+      }
+    });
+  }
+
+  conditions.unshift({ phone: { $in: [...exactCandidates] } });
+  return conditions.length === 1 ? conditions[0] : { $or: conditions };
+};
+
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = asyncHandler(async (req, res, next) => {
   const { name, firstName, lastName, phone, email, password, role, adminKey } = req.body;
+  const normalizedPhone = normalizePhoneForStorage(phone);
+  const normalizedEmail = email ? normalizeEmail(email) : undefined;
 
-  if ((!name && !firstName) || !phone || !password) {
+  if ((!name && !firstName) || !normalizedPhone || !password) {
     return next(new ErrorResponse('Name, phone and password are required', 400));
   }
 
@@ -74,13 +127,13 @@ exports.register = asyncHandler(async (req, res, next) => {
     }
   }
 
-  let existing = await User.findOne({ phone });
+  let existing = await User.findOne(buildPhoneLookupQuery(normalizedPhone));
   if (existing) {
     return next(new ErrorResponse('Phone number already registered', 400));
   }
 
-  if (email) {
-    existing = await User.findOne({ email });
+  if (normalizedEmail) {
+    existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return next(new ErrorResponse('Email already registered', 400));
     }
@@ -93,8 +146,8 @@ exports.register = asyncHandler(async (req, res, next) => {
     name: name || `${firstName || ''} ${lastName || ''}`.trim(),
     firstName,
     lastName,
-    phone,
-    email,
+    phone: normalizedPhone,
+    email: normalizedEmail,
     password: hashed,
     role: safeRole,
     status: safeRole === 'provider' ? 'pending' : 'active',
@@ -122,14 +175,20 @@ exports.register = asyncHandler(async (req, res, next) => {
 // @access  Public
 exports.login = asyncHandler(async (req, res, next) => {
   const { phone, email, password } = req.body;
-  const loginId = phone || email;
+  const loginId = (phone || email || '').trim();
   if (!loginId || !password) {
     return next(new ErrorResponse('Phone/Email and password are required', 400));
   }
 
-  let user = await User.findOne({ phone: loginId });
-  if (!user) {
-    user = await User.findOne({ email: loginId });
+  let user;
+  if (loginId.includes('@')) {
+    const normalizedEmail = normalizeEmail(loginId);
+    user = await User.findOne({ email: normalizedEmail });
+    if (!user && normalizedEmail !== loginId) {
+      user = await User.findOne({ email: loginId });
+    }
+  } else {
+    user = await User.findOne(buildPhoneLookupQuery(loginId));
   }
   
   if (!user) {
@@ -170,8 +229,8 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
   }
 
   const query = loginId.includes('@')
-    ? { email: loginId.toLowerCase() }
-    : { phone: loginId };
+    ? { $or: [{ email: normalizeEmail(loginId) }, { email: loginId }] }
+    : buildPhoneLookupQuery(loginId);
 
   const user = await User.findOne(query);
   if (!user) {

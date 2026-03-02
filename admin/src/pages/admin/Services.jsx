@@ -282,7 +282,7 @@ const Services = () => {
       key: 'price',
       title: 'Price',
       sortable: true,
-      render: (value) => `$${value.toFixed(2)}`
+      render: (value) => `₹${value.toFixed(2)}`
     },
     {
       key: 'duration',
@@ -431,7 +431,7 @@ const Services = () => {
           />
           <div className="grid grid-cols-2 gap-4">
             <FormInput
-              label="Price ($)"
+              label="Price (₹)"
               name="price"
               type="number"
               value={formData.price}
@@ -527,7 +527,7 @@ const Services = () => {
           />
           <div className="grid grid-cols-2 gap-4">
             <FormInput
-              label="Price ($)"
+              label="Price (₹)"
               name="price"
               type="number"
               value={formData.price}
@@ -630,7 +630,7 @@ const Services = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Price</label>
-                <p className="mt-1 text-sm text-gray-900">${selectedService.price.toFixed(2)}</p>
+                <p className="mt-1 text-sm text-gray-900">₹{selectedService.price.toFixed(2)}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Duration</label>

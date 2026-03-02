@@ -288,7 +288,7 @@ const Providers = () => {
       render: (value, row) => (
         <div className="text-sm">
           <div className="text-gray-900">{row.totalBookings || 0} bookings</div>
-          <div className="text-gray-500">${row.totalRevenue || 0} revenue</div>
+          <div className="text-gray-500">₹{row.totalRevenue || 0} revenue</div>
         </div>
       )
     },
@@ -691,7 +691,7 @@ const Providers = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Total Revenue</label>
-                  <p className="mt-1 text-sm text-gray-900">${selectedProvider.totalRevenue || 0}</p>
+                  <p className="mt-1 text-sm text-gray-900">₹{selectedProvider.totalRevenue || 0}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Average Rating</label>

@@ -176,7 +176,7 @@ const Dashboard = () => {
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Monthly Revenue</dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    ${stats.monthlyRevenue.toLocaleString()}
+                    ₹{stats.monthlyRevenue.toLocaleString()}
                   </dd>
                 </dl>
               </div>

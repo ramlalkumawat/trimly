@@ -48,7 +48,7 @@ export default function Services() {
     },
     {
       name: 'price',
-      label: 'Price ($)',
+      label: 'Price (₹)',
       type: 'number',
       required: true,
       min: 0,

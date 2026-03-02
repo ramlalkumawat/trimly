@@ -117,7 +117,7 @@ const Dashboard = () => {
     },
     {
       name: 'Total Earnings',
-      value: `$${dashboardData?.totalEarnings?.toFixed(2) || '0.00'}`,
+      value: `₹${dashboardData?.totalEarnings?.toFixed(2) || '0.00'}`,
       icon: CurrencyDollarIcon,
       color: 'bg-purple-500',
       onClick: () => navigate('/earnings')
@@ -245,7 +245,7 @@ const Dashboard = () => {
                         {booking.customerId?.name || 'Customer'}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {booking.serviceId?.name || 'Service'} • ${booking.serviceId?.price || booking.totalAmount || 0}
+                        {booking.serviceId?.name || 'Service'} • ₹{booking.serviceId?.price || booking.totalAmount || 0}
                       </p>
                       <p className="text-xs text-gray-400">
                         {new Date(booking.date).toLocaleDateString()} at {booking.time}
@@ -306,7 +306,7 @@ const Dashboard = () => {
                         {booking.customerId?.name || 'Customer'}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {booking.serviceId?.name || 'Service'} • ${booking.totalAmount || booking.serviceId?.price || 0}
+                        {booking.serviceId?.name || 'Service'} • ₹{booking.totalAmount || booking.serviceId?.price || 0}
                       </p>
                     </div>
                   </div>

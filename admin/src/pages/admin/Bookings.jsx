@@ -286,7 +286,7 @@ const Bookings = () => {
       render: (value, row) => (
         <div>
           <div className="font-medium text-gray-900">{row.service?.name}</div>
-          <div className="text-sm text-gray-500">${row.service?.price}</div>
+          <div className="text-sm text-gray-500">₹{row.service?.price}</div>
         </div>
       )
     },
@@ -332,13 +332,13 @@ const Bookings = () => {
       key: 'totalAmount',
       title: 'Amount',
       sortable: true,
-      render: (value) => `$${value.toFixed(2)}`
+      render: (value) => `₹${value.toFixed(2)}`
     },
     {
       key: 'commissionAmount',
       title: 'Commission',
       sortable: true,
-      render: (value) => `$${(value || 0).toFixed(2)}`
+      render: (value) => `₹${(value || 0).toFixed(2)}`
     },
     {
       key: 'createdAt',
@@ -510,7 +510,7 @@ const Bookings = () => {
               >
                 <option value="">Select Service</option>
                 {services.map(s => (
-                  <option key={s._id} value={s._id}>{s.name} (${s.price})</option>
+                  <option key={s._id} value={s._id}>{s.name} (₹{s.price})</option>
                 ))}
               </select>
             </div>
@@ -627,11 +627,11 @@ const Bookings = () => {
               <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <p className="text-xs text-gray-500">Total Amount</p>
-                  <p className="font-medium">${selectedBooking.totalAmount?.toFixed(2)}</p>
+                  <p className="font-medium">₹{selectedBooking.totalAmount?.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Commission</p>
-                  <p className="font-medium text-amber-600">${selectedBooking.commissionAmount?.toFixed(2)}</p>
+                  <p className="font-medium text-amber-600">₹{selectedBooking.commissionAmount?.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Payment Status</p>

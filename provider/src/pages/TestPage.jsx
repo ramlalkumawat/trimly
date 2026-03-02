@@ -172,7 +172,7 @@ const TestPage = () => {
             <div className="ml-3 sm:ml-5 w-0 flex-1">
               <dl>
                 <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Earnings</dt>
-                <dd className="text-base sm:text-lg font-medium text-gray-900">${stats.totalEarnings}</dd>
+                <dd className="text-base sm:text-lg font-medium text-gray-900">₹{stats.totalEarnings}</dd>
               </dl>
             </div>
           </div>

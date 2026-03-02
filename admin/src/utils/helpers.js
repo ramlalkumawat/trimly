@@ -1,7 +1,7 @@
 // small helper utilities used across the dashboard
 export const formatCurrency = (value) => {
   if (typeof value === 'string') return value;
-  return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `₹${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 export const formatDate = (dateString) => {

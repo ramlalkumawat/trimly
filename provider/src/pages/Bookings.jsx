@@ -313,7 +313,7 @@ const Bookings = () => {
                         </div>
                         <div className="flex items-center text-sm text-gray-600">
                           <CurrencyDollarIcon className="h-4 w-4 mr-2 text-gray-400" />
-                          <span>Price: ${booking.totalAmount ?? booking.serviceId?.price ?? 0}</span>
+                          <span>Price: ₹{booking.totalAmount ?? booking.serviceId?.price ?? 0}</span>
                         </div>
                       </div>
                       <div className="space-y-2">

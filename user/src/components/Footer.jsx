@@ -2,6 +2,10 @@ import React from 'react'
 
 // Footer with 4-column layout as per requirements
 export default function Footer(){
+  const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  const providerBaseUrl = import.meta.env.VITE_PROVIDER_APP_URL || (isLocalhost ? 'http://localhost:3000' : '/provider')
+  const providerRegisterUrl = `${providerBaseUrl.replace(/\/$/, '')}/register`
+
   return (
     <footer className="bg-gray-900 text-gray-300 py-16 px-6">
       <div className="max-w-5xl mx-auto">
@@ -32,8 +36,8 @@ export default function Footer(){
           <div>
             <h3 className="text-white font-semibold mb-4">For Professionals</h3>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="hover:text-white transition">Join as a Stylist</a></li>
-              <li><a href="#" className="hover:text-white transition">Partner With Us</a></li>
+              <li><a href={providerRegisterUrl} className="hover:text-white transition">Join as a Stylist</a></li>
+              <li><a href={providerRegisterUrl} className="hover:text-white transition">Partner With Us</a></li>
             </ul>
           </div>
 
@@ -49,8 +53,19 @@ export default function Footer(){
         </div>
 
         {/* Copyright line */}
-        <div className="border-t border-gray-700 mt-12 pt-8 text-center text-sm">
-          © {new Date().getFullYear()} Trimly. All rights reserved.
+        <div className="border-t border-gray-700 mt-12 pt-8 text-center text-sm space-y-2">
+          <p>© {new Date().getFullYear()} Trimly. All rights reserved.</p>
+          <p>
+            bulid by{' '}
+            <a
+              href="https://www.instagram.com/_ramlal__kumawat?igsh=cTRrdzZ1aTk1ajFv"
+              target="_blank"
+              rel="noreferrer"
+              className="text-white hover:text-primary transition"
+            >
+              ramlal kumawat
+            </a>
+          </p>
         </div>
       </div>
     </footer>

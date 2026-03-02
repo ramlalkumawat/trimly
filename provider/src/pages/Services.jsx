@@ -216,7 +216,7 @@ const Services = () => {
               <div className="space-y-2">
                 <div className="flex items-center text-sm text-gray-600">
                   <CurrencyDollarIcon className="h-4 w-4 mr-2 text-gray-400" />
-                  <span className="font-medium">${service.price}</span>
+                  <span className="font-medium">₹{service.price}</span>
                 </div>
                 <div className="flex items-center text-sm text-gray-600">
                   <ClockIcon className="h-4 w-4 mr-2 text-gray-400" />
@@ -319,7 +319,7 @@ const Services = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                          Price ($) *
+                          Price (₹) *
                         </label>
                         <input
                           type="number"

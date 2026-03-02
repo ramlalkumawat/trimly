@@ -178,7 +178,7 @@ const BookingStatus = ({ booking, token, user }) => {
 
         <div className="flex items-center text-sm text-gray-600">
           <span className="font-medium mr-2">Amount:</span>
-          ${booking.totalAmount}
+          ₹{booking.totalAmount}
         </div>
 
         <div className="text-sm text-gray-600">

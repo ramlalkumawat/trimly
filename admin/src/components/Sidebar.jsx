@@ -72,8 +72,19 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           
           {/* Footer */}
           <div className="pt-4 border-t border-gray-200 mt-auto">
-            <div className="text-xs text-gray-500 text-center">
-              2024 Trimly Admin
+            <div className="text-xs text-gray-500 text-center space-y-1">
+              <div>{new Date().getFullYear()} Trimly Admin</div>
+              <div>
+                bulid by{' '}
+                <a
+                  href="https://www.instagram.com/_ramlal__kumawat?igsh=cTRrdzZ1aTk1ajFv"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  ramlal kumawat
+                </a>
+              </div>
             </div>
           </div>
         </div>

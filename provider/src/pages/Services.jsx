@@ -1,412 +1,385 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Clock3, Plus, RefreshCw, Trash2, Wrench, X } from 'lucide-react';
 import { providerAPI } from '../api/provider';
 import useToast from '../hooks/useToast';
-import { 
-  PlusIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  XMarkIcon,
-  ClockIcon,
-  CurrencyDollarIcon,
-  TagIcon
-} from '@heroicons/react/24/outline';
-import { PulseLoader } from 'react-spinners';
+import useDelayedLoading from '../hooks/useDelayedLoading';
+import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
+import { CardSkeleton, EmptyState, ErrorState, InlineLoader, Skeleton } from '../components/ui/Loader';
 
-// Service management page where provider can create, edit, and delete offerings.
+const initialFormState = {
+  name: '',
+  category: '',
+  price: '',
+  duration: '',
+  description: '',
+};
+
 const Services = () => {
+  const toast = useToast();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const [openModal, setOpenModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    category: '',
-    price: '',
-    duration: '',
-    description: ''
-  });
+  const [formState, setFormState] = useState(initialFormState);
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  
-  const toast = useToast();
+
+  const showLoader = useDelayedLoading(loading, 300);
+
+  const fetchServices = useCallback(
+    async ({ background = false } = {}) => {
+      if (background) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError('');
+
+      try {
+        const response = await providerAPI.getServices();
+        setServices(Array.isArray(response?.data?.data) ? response.data.data : []);
+      } catch (requestError) {
+        setError(requestError?.response?.data?.message || 'Failed to fetch services.');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     fetchServices();
-  }, []);
+  }, [fetchServices]);
 
-  const fetchServices = async () => {
-    try {
-      const response = await providerAPI.getServices();
-      setServices(response.data.data || []);
-    } catch (error) {
-      toast.error('Error', 'Failed to fetch services');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const modalTitle = useMemo(() => (editingService ? 'Edit Service' : 'Add Service'), [editingService]);
 
-  const handleAddService = () => {
+  const resetModal = () => {
+    setOpenModal(false);
     setEditingService(null);
-    setFormData({
-      name: '',
-      category: '',
-      price: '',
-      duration: '',
-      description: ''
-    });
+    setFormState(initialFormState);
     setFormErrors({});
-    setShowModal(true);
   };
 
-  const handleEditService = (service) => {
+  const openCreateModal = () => {
+    setEditingService(null);
+    setFormState(initialFormState);
+    setFormErrors({});
+    setOpenModal(true);
+  };
+
+  const openEditModal = (service) => {
     setEditingService(service);
-    setFormData({
-      name: service.name,
-      category: service.category,
-      price: service.price,
-      duration: service.duration,
-      description: service.description
+    setFormState({
+      name: service.name || '',
+      category: service.category || '',
+      price: service.price || '',
+      duration: service.duration || '',
+      description: service.description || '',
     });
     setFormErrors({});
-    setShowModal(true);
+    setOpenModal(true);
   };
 
-  const handleDeleteService = async (serviceId) => {
-    if (!window.confirm('Are you sure you want to delete this service?')) {
-      return;
-    }
-
-    try {
-      await providerAPI.deleteService(serviceId);
-      toast.success('Deleted', 'Service has been deleted successfully');
-      fetchServices();
-    } catch (error) {
-      toast.error('Error', 'Failed to delete service');
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormState((prev) => ({ ...prev, [name]: value }));
+    if (formErrors[name]) {
+      setFormErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
   const validateForm = () => {
-    const errors = {};
-    
-    if (!formData.name.trim()) {
-      errors.name = 'Service name is required';
-    }
-    
-    if (!formData.category.trim()) {
-      errors.category = 'Category is required';
-    }
-    
-    if (!formData.price || formData.price <= 0) {
-      errors.price = 'Price must be greater than 0';
-    }
-    
-    if (!formData.duration.trim()) {
-      errors.duration = 'Duration is required';
-    }
-    
-    if (!formData.description.trim()) {
-      errors.description = 'Description is required';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    const nextErrors = {};
+    if (!formState.name.trim()) nextErrors.name = 'Service name is required.';
+    if (!formState.category.trim()) nextErrors.category = 'Category is required.';
+    if (!formState.price || Number(formState.price) <= 0) nextErrors.price = 'Price must be greater than 0.';
+    if (!formState.duration.trim()) nextErrors.duration = 'Duration is required.';
+    if (!formState.description.trim()) nextErrors.description = 'Description is required.';
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!validateForm()) return;
 
     try {
       setSubmitting(true);
-      
-      const serviceData = {
-        ...formData,
-        price: parseFloat(formData.price)
+      const payload = {
+        ...formState,
+        price: Number(formState.price),
       };
 
       if (editingService) {
-        await providerAPI.updateService(editingService._id, serviceData);
-        toast.success('Updated', 'Service has been updated successfully');
+        await providerAPI.updateService(editingService._id, payload);
+        toast.success('Service updated', 'Service details were updated successfully.');
       } else {
-        await providerAPI.addService(serviceData);
-        toast.success('Added', 'Service has been added successfully');
+        await providerAPI.addService(payload);
+        toast.success('Service added', 'New service created successfully.');
       }
-      
-      setShowModal(false);
-      fetchServices();
-    } catch (error) {
-      toast.error('Error', `Failed to ${editingService ? 'update' : 'add'} service`);
+
+      resetModal();
+      fetchServices({ background: true });
+    } catch (submitError) {
+      toast.error(
+        'Save failed',
+        submitError?.response?.data?.message || 'Unable to save service changes.'
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (formErrors[name]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+  const handleDeleteService = async (serviceId) => {
+    if (!window.confirm('Delete this service permanently?')) return;
+
+    try {
+      await providerAPI.deleteService(serviceId);
+      toast.success('Service deleted', 'Service removed from your catalog.');
+      fetchServices({ background: true });
+    } catch (deleteError) {
+      toast.error('Delete failed', deleteError?.response?.data?.message || 'Please retry.');
     }
   };
 
-  if (loading) {
+  if (showLoader) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <PulseLoader color="#ffcc00" size={15} />
+      <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-52" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <CardSkeleton key={idx} rows={4} />
+          ))}
+        </div>
       </div>
     );
   }
 
+  if (error && !services.length) {
+    return <ErrorState title="Unable to load services" message={error} onRetry={() => fetchServices()} />;
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 sm:space-y-6">
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Service Management</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Manage your service offerings and pricing
+          <h2 className="text-xl font-semibold text-zinc-900 sm:text-2xl">Service Catalog</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Manage offered services, pricing, and descriptions.
           </p>
         </div>
-        <button
-          onClick={handleAddService}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-        >
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Service
-        </button>
-      </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {refreshing ? <InlineLoader label="Refreshing..." /> : null}
+          <button
+            type="button"
+            onClick={() => fetchServices({ background: true })}
+            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors duration-300 hover:bg-zinc-100"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors duration-300 hover:bg-zinc-800"
+          >
+            <Plus className="h-4 w-4" />
+            Add Service
+          </button>
+        </div>
+      </section>
 
-      {/* Services Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {services.map((service) => (
-          <div key={service._id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">{service.name}</h3>
-                  <p className="text-sm text-gray-500">{service.category}</p>
-                </div>
-                <div className="flex space-x-1">
-                  <button
-                    onClick={() => handleEditService(service)}
-                    className="p-1 text-gray-400 hover:text-gray-600"
-                  >
-                    <PencilIcon className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteService(service._id)}
-                    className="p-1 text-gray-400 hover:text-red-600"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center text-sm text-gray-600">
-                  <CurrencyDollarIcon className="h-4 w-4 mr-2 text-gray-400" />
-                  <span className="font-medium">₹{service.price}</span>
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <ClockIcon className="h-4 w-4 mr-2 text-gray-400" />
-                  <span>{service.duration}</span>
-                </div>
-                <div className="flex items-start text-sm text-gray-600">
-                  <TagIcon className="h-4 w-4 mr-2 text-gray-400 mt-0.5" />
-                  <span className="line-clamp-2">{service.description}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {error ? <ErrorState compact title="Sync issue" message={error} onRetry={() => fetchServices()} /> : null}
 
-      {services.length === 0 && (
-        <div className="text-center py-12">
-          <TagIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No services</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Get started by adding your first service
-          </p>
-          <div className="mt-6">
-            <button
-              onClick={handleAddService}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+      {services.length ? (
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {services.map((service) => (
+            <Card
+              key={service._id}
+              hover
+              bodyClassName="space-y-4"
+              title={service.name}
+              description={service.category}
+              action={<Badge variant="info">{service.duration}</Badge>}
             >
-              <PlusIcon className="h-4 w-4 mr-2" />
+              <div className="space-y-2 text-sm text-zinc-600">
+                <p className="inline-flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-zinc-400" />
+                  {service.category}
+                </p>
+                <p className="inline-flex items-center gap-2">
+                  <Clock3 className="h-4 w-4 text-zinc-400" />
+                  {service.duration}
+                </p>
+                <p className="font-semibold text-zinc-900">
+                  {new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'INR',
+                    maximumFractionDigits: 0,
+                  }).format(Number(service.price) || 0)}
+                </p>
+              </div>
+              <p className="line-clamp-2 text-sm text-zinc-600">{service.description}</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => openEditModal(service)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors duration-300 hover:bg-zinc-100"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteService(service._id)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition-colors duration-300 hover:bg-rose-100"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              </div>
+            </Card>
+          ))}
+        </section>
+      ) : (
+        <EmptyState
+          title="No services yet"
+          message="Create your first service to start receiving bookings."
+          action={
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors duration-300 hover:bg-zinc-800"
+            >
               Add Service
             </button>
-          </div>
-        </div>
+          }
+        />
       )}
 
-      {/* Add/Edit Service Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+      {openModal ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/60 p-4 sm:items-center">
+          <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-4 sm:px-6">
+              <h3 className="text-lg font-semibold text-zinc-900">{modalTitle}</h3>
+              <button
+                type="button"
+                onClick={resetModal}
+                className="rounded-xl border border-zinc-200 p-2 text-zinc-500 transition-colors duration-300 hover:bg-zinc-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <form onSubmit={handleSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {editingService ? 'Edit Service' : 'Add New Service'}
-                    </h3>
-                    <button
-                      type="button"
-                      className="text-gray-400 hover:text-gray-500"
-                      onClick={() => setShowModal(false)}
-                    >
-                      <XMarkIcon className="h-6 w-6" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                        Service Name *
-                      </label>
-                      <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
-                          formErrors.name ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="e.g., Haircut, Plumbing Repair"
-                      />
-                      {formErrors.name && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-                        Category *
-                      </label>
-                      <input
-                        type="text"
-                        id="category"
-                        name="category"
-                        value={formData.category}
-                        onChange={handleInputChange}
-                        className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
-                          formErrors.category ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="e.g., Beauty, Home Repair"
-                      />
-                      {formErrors.category && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.category}</p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                          Price (₹) *
-                        </label>
-                        <input
-                          type="number"
-                          id="price"
-                          name="price"
-                          value={formData.price}
-                          onChange={handleInputChange}
-                          step="0.01"
-                          min="0"
-                          className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
-                            formErrors.price ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                          placeholder="50.00"
-                        />
-                        {formErrors.price && (
-                          <p className="mt-1 text-sm text-red-600">{formErrors.price}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label htmlFor="duration" className="block text-sm font-medium text-gray-700">
-                          Duration *
-                        </label>
-                        <input
-                          type="text"
-                          id="duration"
-                          name="duration"
-                          value={formData.duration}
-                          onChange={handleInputChange}
-                          className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
-                            formErrors.duration ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                          placeholder="e.g., 30 minutes, 1 hour"
-                        />
-                        {formErrors.duration && (
-                          <p className="mt-1 text-sm text-red-600">{formErrors.duration}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                        Description *
-                      </label>
-                      <textarea
-                        id="description"
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        rows={3}
-                        className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm ${
-                          formErrors.description ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Describe your service in detail..."
-                      />
-                      {formErrors.description && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.description}</p>
-                      )}
-                    </div>
-                  </div>
+            <form onSubmit={handleSubmit} className="space-y-4 px-4 py-4 sm:px-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="mb-2 block text-sm font-medium text-zinc-700" htmlFor="name">
+                    Service Name
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    value={formState.name}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm text-zinc-800 outline-none transition focus:border-zinc-900"
+                  />
+                  {formErrors.name ? <p className="mt-1 text-xs text-rose-600">{formErrors.name}</p> : null}
                 </div>
 
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-                  >
-                    {submitting ? (
-                      <PulseLoader color="#ffffff" size={6} />
-                    ) : (
-                      editingService ? 'Update Service' : 'Add Service'
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                    onClick={() => setShowModal(false)}
-                  >
-                    Cancel
-                  </button>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700" htmlFor="category">
+                    Category
+                  </label>
+                  <input
+                    id="category"
+                    name="category"
+                    value={formState.category}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm text-zinc-800 outline-none transition focus:border-zinc-900"
+                  />
+                  {formErrors.category ? (
+                    <p className="mt-1 text-xs text-rose-600">{formErrors.category}</p>
+                  ) : null}
                 </div>
-              </form>
-            </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700" htmlFor="price">
+                    Price (INR)
+                  </label>
+                  <input
+                    id="price"
+                    name="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formState.price}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm text-zinc-800 outline-none transition focus:border-zinc-900"
+                  />
+                  {formErrors.price ? <p className="mt-1 text-xs text-rose-600">{formErrors.price}</p> : null}
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="mb-2 block text-sm font-medium text-zinc-700" htmlFor="duration">
+                    Duration
+                  </label>
+                  <input
+                    id="duration"
+                    name="duration"
+                    value={formState.duration}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm text-zinc-800 outline-none transition focus:border-zinc-900"
+                  />
+                  {formErrors.duration ? (
+                    <p className="mt-1 text-xs text-rose-600">{formErrors.duration}</p>
+                  ) : null}
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="mb-2 block text-sm font-medium text-zinc-700" htmlFor="description">
+                    Description
+                  </label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    rows={4}
+                    value={formState.description}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm text-zinc-800 outline-none transition focus:border-zinc-900"
+                  />
+                  {formErrors.description ? (
+                    <p className="mt-1 text-xs text-rose-600">{formErrors.description}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-zinc-200 pt-4">
+                <button
+                  type="button"
+                  onClick={resetModal}
+                  className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors duration-300 hover:bg-zinc-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors duration-300 hover:bg-zinc-800 disabled:opacity-70"
+                >
+                  {submitting ? <InlineLoader label="Saving" /> : editingService ? 'Update Service' : 'Add Service'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

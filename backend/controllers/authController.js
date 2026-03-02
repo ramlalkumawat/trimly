@@ -24,6 +24,7 @@ const signToken = (user) => {
 
 const sanitizeUser = (userDoc) => ({
   id: userDoc._id,
+  _id: userDoc._id,
   name: userDoc.name,
   firstName: userDoc.firstName || '',
   lastName: userDoc.lastName || '',
@@ -31,6 +32,7 @@ const sanitizeUser = (userDoc) => ({
   email: userDoc.email || '',
   role: userDoc.role,
   status: userDoc.status,
+  isAvailable: userDoc.isAvailable !== false,
   approved: userDoc.approved,
   isApproved: userDoc.isApproved
 });

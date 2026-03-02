@@ -1,399 +1,330 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  BarChart3,
+  CalendarDays,
+  Download,
+  IndianRupee,
+  RefreshCw,
+  TrendingUp,
+} from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { endOfDay, format, startOfDay, startOfMonth, subDays } from 'date-fns';
 import { providerAPI } from '../api/provider';
 import useToast from '../hooks/useToast';
-import { 
-  CurrencyDollarIcon, 
-  CalendarIcon,
-  ArrowTrendingUpIcon,
-  ChartBarIcon
-} from '@heroicons/react/24/outline';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { PulseLoader } from 'react-spinners';
-import { format, subDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import useDelayedLoading from '../hooks/useDelayedLoading';
+import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
+import { CardSkeleton, EmptyState, ErrorState, InlineLoader, Skeleton } from '../components/ui/Loader';
 
-// Earnings analytics page with date filters and trend chart summaries.
+const RANGE_OPTIONS = [
+  { value: '7d', label: 'Last 7 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: '90d', label: 'Last 90 days' },
+  { value: 'month', label: 'This month' },
+];
+
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+
+const resolveDateRange = (range) => {
+  const now = new Date();
+  switch (range) {
+    case '7d':
+      return [startOfDay(subDays(now, 6)), endOfDay(now)];
+    case '90d':
+      return [startOfDay(subDays(now, 89)), endOfDay(now)];
+    case 'month':
+      return [startOfDay(startOfMonth(now)), endOfDay(now)];
+    default:
+      return [startOfDay(subDays(now, 29)), endOfDay(now)];
+  }
+};
+
 const Earnings = () => {
-  const [earnings, setEarnings] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState('30days'); // 7days, 30days, 3months, custom
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
-  const [showCustomRange, setShowCustomRange] = useState(false);
-  
   const toast = useToast();
+  const [range, setRange] = useState('30d');
+  const [earningsData, setEarningsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+
+  const showLoading = useDelayedLoading(loading, 300);
+
+  const fetchEarnings = useCallback(
+    async ({ background = false } = {}) => {
+      if (background) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError('');
+
+      try {
+        const [startDate, endDate] = resolveDateRange(range);
+        const response = await providerAPI.getEarnings(
+          startDate.toISOString(),
+          endDate.toISOString(),
+          background ? { headers: { 'x-skip-global-loader': 'true' } } : {}
+        );
+        setEarningsData(response?.data?.data || {});
+      } catch (requestError) {
+        setError(requestError?.response?.data?.message || 'Unable to fetch earnings.');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [range]
+  );
 
   useEffect(() => {
     fetchEarnings();
-  }, [dateRange, customStartDate, customEndDate]);
+  }, [fetchEarnings]);
 
-  const fetchEarnings = async () => {
-    try {
-      setLoading(true);
-      let startDate, endDate;
+  const monthlySummaries = useMemo(() => {
+    const monthly = Array.isArray(earningsData?.monthlyEarnings) ? earningsData.monthlyEarnings : [];
+    const sorted = [...monthly].sort((a, b) => new Date(a.month) - new Date(b.month));
+    const current = sorted[sorted.length - 1] || { earnings: 0, bookings: 0 };
+    const previous = sorted[sorted.length - 2] || { earnings: 0, bookings: 0 };
+    const growth =
+      Number(previous.earnings) > 0
+        ? ((Number(current.earnings) - Number(previous.earnings)) / Number(previous.earnings)) * 100
+        : 0;
 
-      switch (dateRange) {
-        case '7days':
-          startDate = subDays(new Date(), 7);
-          endDate = new Date();
-          break;
-        case '30days':
-          startDate = subDays(new Date(), 30);
-          endDate = new Date();
-          break;
-        case '3months':
-          startDate = subDays(new Date(), 90);
-          endDate = new Date();
-          break;
-        case 'thisMonth':
-          startDate = startOfMonth(new Date());
-          endDate = endOfMonth(new Date());
-          break;
-        case 'custom':
-          if (!customStartDate || !customEndDate) {
-            setLoading(false);
-            return;
-          }
-          startDate = new Date(customStartDate);
-          endDate = new Date(customEndDate);
-          break;
-        default:
-          startDate = subDays(new Date(), 30);
-          endDate = new Date();
-      }
+    return {
+      total: Number(earningsData?.totalEarnings || 0),
+      currentMonth: Number(current.earnings || 0),
+      previousMonth: Number(previous.earnings || 0),
+      avgTicket:
+        Number(earningsData?.completedBookings || 0) > 0
+          ? Number(earningsData?.totalEarnings || 0) / Number(earningsData.completedBookings)
+          : 0,
+      growth,
+    };
+  }, [earningsData]);
 
-      const response = await providerAPI.getEarnings(
-        startDate.toISOString(),
-        endDate.toISOString()
-      );
-      
-      setEarnings(response.data.data);
-    } catch (error) {
-      toast.error('Error', 'Failed to fetch earnings data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
-  const prepareChartData = () => {
-    if (!earnings?.dailyEarnings) return [];
-    
-    return earnings.dailyEarnings.map(day => ({
-      date: format(new Date(day.date), 'MMM dd'),
-      earnings: day.earnings,
-      bookings: day.bookings
+  const chartData = useMemo(() => {
+    const monthly = Array.isArray(earningsData?.monthlyEarnings) ? earningsData.monthlyEarnings : [];
+    return monthly.map((entry) => ({
+      label: format(new Date(entry.month), 'MMM yy'),
+      earnings: Number(entry.earnings) || 0,
+      bookings: Number(entry.bookings) || 0,
     }));
+  }, [earningsData]);
+
+  const transactions = useMemo(
+    () => (Array.isArray(earningsData?.recentTransactions) ? earningsData.recentTransactions : []),
+    [earningsData]
+  );
+
+  const handleDownloadReport = () => {
+    const rows = [
+      ['Date', 'Customer', 'Service', 'Amount', 'Status'],
+      ...transactions.map((item) => [
+        format(new Date(item.date), 'yyyy-MM-dd'),
+        item.user?.name || 'Customer',
+        item.service?.name || 'Service',
+        String(item.amount || 0),
+        'Completed',
+      ]),
+    ];
+
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `trimly-earnings-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Report ready', 'CSV report downloaded successfully.');
   };
 
-  const prepareMonthlyData = () => {
-    if (!earnings?.monthlyEarnings) return [];
-    
-    return earnings.monthlyEarnings.map(month => ({
-      month: format(new Date(month.month), 'MMM yyyy'),
-      earnings: month.earnings,
-      bookings: month.bookings
-    }));
-  };
-
-  if (loading) {
+  if (showLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <PulseLoader color="#ffcc00" size={15} />
+      <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <CardSkeleton key={idx} rows={2} />
+          ))}
+        </div>
+        <CardSkeleton rows={8} />
+        <CardSkeleton rows={8} />
       </div>
     );
   }
 
+  if (error && !earningsData) {
+    return <ErrorState title="Unable to load earnings" message={error} onRetry={() => fetchEarnings()} />;
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Earnings</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Track your income and payment history
-        </p>
-      </div>
-
-      {/* Date Range Selector */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-          <div className="flex items-center space-x-2">
-            <CalendarIcon className="h-5 w-5 text-gray-400" />
-            <span className="text-sm font-medium text-gray-700">Date Range:</span>
-          </div>
-          
-          <div className="flex flex-wrap gap-2">
-            {[
-              { value: '7days', label: 'Last 7 days' },
-              { value: '30days', label: 'Last 30 days' },
-              { value: '3months', label: 'Last 3 months' },
-              { value: 'thisMonth', label: 'This month' },
-              { value: 'custom', label: 'Custom range' }
-            ].map((range) => (
-              <button
-                key={range.value}
-                onClick={() => {
-                  if (range.value === 'custom') {
-                    setShowCustomRange(!showCustomRange);
-                  } else {
-                    setDateRange(range.value);
-                    setShowCustomRange(false);
-                  }
-                }}
-                className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                  dateRange === range.value && !showCustomRange
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {range.label}
-              </button>
-            ))}
-          </div>
+    <div className="space-y-4 sm:space-y-6">
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-zinc-900 sm:text-2xl">Earnings Overview</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Analyze monthly trends, transactions, and payout performance.
+          </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {refreshing ? <InlineLoader label="Refreshing..." /> : null}
+          <button
+            type="button"
+            onClick={() => fetchEarnings({ background: true })}
+            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors duration-300 hover:bg-zinc-100"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadReport}
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition-colors duration-300 hover:bg-zinc-800"
+          >
+            <Download className="h-4 w-4" />
+            Download Report
+          </button>
+        </div>
+      </section>
 
-        {/* Custom Date Range */}
-        {showCustomRange && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+      <section className="flex flex-wrap items-center gap-2">
+        {RANGE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setRange(option.value)}
+            className={[
+              'rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-300',
+              range === option.value
+                ? 'bg-zinc-900 text-white'
+                : 'border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100',
+            ].join(' ')}
+          >
+            {option.label}
+          </button>
+        ))}
+      </section>
+
+      {error ? <ErrorState compact title="Partial sync issue" message={error} onRetry={() => fetchEarnings()} /> : null}
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card bodyClassName="space-y-2">
+          <div className="inline-flex rounded-xl bg-zinc-100 p-2 text-zinc-700">
+            <IndianRupee className="h-4 w-4" />
+          </div>
+          <p className="text-sm text-zinc-500">Total Earnings</p>
+          <p className="text-2xl font-semibold text-zinc-900">{formatCurrency(monthlySummaries.total)}</p>
+        </Card>
+        <Card bodyClassName="space-y-2">
+          <div className="inline-flex rounded-xl bg-zinc-100 p-2 text-zinc-700">
+            <CalendarDays className="h-4 w-4" />
+          </div>
+          <p className="text-sm text-zinc-500">This Month</p>
+          <p className="text-2xl font-semibold text-zinc-900">{formatCurrency(monthlySummaries.currentMonth)}</p>
+        </Card>
+        <Card bodyClassName="space-y-2">
+          <div className="inline-flex rounded-xl bg-zinc-100 p-2 text-zinc-700">
+            <BarChart3 className="h-4 w-4" />
+          </div>
+          <p className="text-sm text-zinc-500">Previous Month</p>
+          <p className="text-2xl font-semibold text-zinc-900">{formatCurrency(monthlySummaries.previousMonth)}</p>
+        </Card>
+        <Card bodyClassName="space-y-2">
+          <div className="inline-flex rounded-xl bg-zinc-100 p-2 text-zinc-700">
+            <TrendingUp className="h-4 w-4" />
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-zinc-500">Avg Ticket</p>
+            <Badge variant={monthlySummaries.growth >= 0 ? 'success' : 'error'}>
+              {monthlySummaries.growth.toFixed(1)}%
+            </Badge>
+          </div>
+          <p className="text-2xl font-semibold text-zinc-900">{formatCurrency(monthlySummaries.avgTicket)}</p>
+        </Card>
+      </section>
+
+      <Card title="Monthly Trend" description="Revenue by month">
+        {chartData.length ? (
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid stroke="#e4e4e7" strokeDasharray="3 3" />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: '#71717a', fontSize: 12 }}
+                  tickFormatter={(value) => `₹${value}`}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                />
-              </div>
-            </div>
-            <div className="mt-3 flex justify-end">
-              <button
-                onClick={() => {
-                  if (customStartDate && customEndDate) {
-                    setDateRange('custom');
-                  }
-                }}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-              >
-                Apply Range
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 rounded-md p-3 bg-green-500">
-              <CurrencyDollarIcon className="h-6 w-6 text-white" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Total Earnings
-                </dt>
-                <dd className="text-lg font-semibold text-gray-900">
-                  {formatCurrency(earnings?.totalEarnings || 0)}
-                </dd>
-              </dl>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 rounded-md p-3 bg-blue-500">
-              <ChartBarIcon className="h-6 w-6 text-white" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Completed Bookings
-                </dt>
-                <dd className="text-lg font-semibold text-gray-900">
-                  {earnings?.completedBookings || 0}
-                </dd>
-              </dl>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 rounded-md p-3 bg-purple-500">
-              <ArrowTrendingUpIcon className="h-6 w-6 text-white" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Average Earnings
-                </dt>
-                <dd className="text-lg font-semibold text-gray-900">
-                  {formatCurrency(earnings?.averageEarnings || 0)}
-                </dd>
-              </dl>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 rounded-md p-3 bg-yellow-500">
-              <CalendarIcon className="h-6 w-6 text-white" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Daily Average
-                </dt>
-                <dd className="text-lg font-semibold text-gray-900">
-                  {formatCurrency(earnings?.dailyAverage || 0)}
-                </dd>
-              </dl>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Daily Earnings Chart */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Daily Earnings</h3>
-          {earnings?.dailyEarnings?.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={prepareChartData()}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value) => [formatCurrency(value), 'Earnings']}
-                  labelFormatter={(label) => `Date: ${label}`}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="earnings" 
-                  stroke="#ffcc00" 
-                  strokeWidth={2}
-                  dot={{ fill: '#ffcc00' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              No daily earnings data available
-            </div>
-          )}
-        </div>
-
-        {/* Monthly Earnings Chart */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Monthly Overview</h3>
-          {earnings?.monthlyEarnings?.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={prepareMonthlyData()}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value) => [formatCurrency(value), 'Earnings']}
-                  labelFormatter={(label) => `Month: ${label}`}
-                />
-                <Bar dataKey="earnings" fill="#ffcc00" />
+                <Tooltip formatter={(value) => [formatCurrency(value), 'Earnings']} />
+                <Bar dataKey="earnings" radius={[8, 8, 0, 0]} fill="#27272a" />
               </BarChart>
             </ResponsiveContainer>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              No monthly earnings data available
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        ) : (
+          <EmptyState
+            title="No monthly data"
+            message="Complete bookings to populate your monthly trend chart."
+          />
+        )}
+      </Card>
 
-      {/* Recent Transactions */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Recent Transactions</h3>
-        </div>
-        <div className="overflow-hidden">
-          {earnings?.recentTransactions?.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Service
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
+      <Card title="Recent Transactions" description="Completed booking payouts">
+        {transactions.length ? (
+          <div className="-mx-4 overflow-x-auto sm:-mx-6">
+            <div className="min-w-[760px] px-4 sm:px-6">
+              <table className="w-full border-separate border-spacing-y-2">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-zinc-500">
+                    <th className="px-3 py-2">Date</th>
+                    <th className="px-3 py-2">Customer</th>
+                    <th className="px-3 py-2">Service</th>
+                    <th className="px-3 py-2">Amount</th>
+                    <th className="px-3 py-2">Status</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {earnings.recentTransactions.map((transaction) => (
-                    <tr key={transaction._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {format(new Date(transaction.date), 'MMM dd, yyyy')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {transaction.user?.name || 'Customer'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {transaction.service?.name || 'Service'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatCurrency(transaction.amount)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Completed
-                        </span>
+                <tbody>
+                  {transactions.map((transaction) => (
+                    <tr key={transaction._id} className="rounded-2xl border border-zinc-100 bg-zinc-50 text-sm text-zinc-700">
+                      <td className="rounded-l-xl px-3 py-3">{format(new Date(transaction.date), 'dd MMM yyyy')}</td>
+                      <td className="px-3 py-3">{transaction.user?.name || 'Customer'}</td>
+                      <td className="px-3 py-3">{transaction.service?.name || 'Service'}</td>
+                      <td className="px-3 py-3 font-semibold text-zinc-900">{formatCurrency(transaction.amount)}</td>
+                      <td className="rounded-r-xl px-3 py-3">
+                        <Badge variant="completed">Completed</Badge>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <CurrencyDollarIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No transactions</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Your completed booking transactions will appear here
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        ) : (
+          <EmptyState
+            title="No transactions yet"
+            message="Completed booking transactions will appear in this table."
+          />
+        )}
+      </Card>
     </div>
   );
 };

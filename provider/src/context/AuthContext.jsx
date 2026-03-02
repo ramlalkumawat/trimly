@@ -1,9 +1,20 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { providerAPI } from '../api/provider';
-import socketService from '../../../shared/socketService';
+import socketService from '../utils/socket';
 
-// Auth/session state container for provider login, profile, and socket lifecycle.
+// Auth/session state container for provider login, profile, and availability state.
 const AuthContext = createContext();
+
+const normalizeProvider = (provider = {}) => {
+  const providerId = provider._id || provider.id || null;
+  return {
+    ...provider,
+    _id: providerId,
+    id: providerId,
+    isAvailable:
+      typeof provider.isAvailable === 'boolean' ? provider.isAvailable : provider.status === 'active',
+  };
+};
 
 const authReducer = (state, action) => {
   switch (action.type) {
@@ -12,12 +23,9 @@ const authReducer = (state, action) => {
         ...state,
         isAuthenticated: true,
         loading: false,
-        provider: { 
-          ...action.payload.provider, 
-          isAvailable: action.payload.provider?.status === 'active' // Map status to isAvailable
-        },
+        provider: normalizeProvider(action.payload.provider),
         token: action.payload.token,
-        error: null
+        error: null,
       };
     case 'LOGIN_FAILURE':
       return {
@@ -26,7 +34,7 @@ const authReducer = (state, action) => {
         loading: false,
         provider: null,
         token: null,
-        error: action.payload
+        error: action.payload,
       };
     case 'LOGOUT':
       return {
@@ -35,31 +43,33 @@ const authReducer = (state, action) => {
         loading: false,
         provider: null,
         token: null,
-        error: null
+        error: null,
       };
     case 'SET_LOADING':
       return {
         ...state,
-        loading: action.payload
+        loading: action.payload,
       };
     case 'UPDATE_PROFILE':
       return {
         ...state,
-        provider: { 
-          ...state.provider, 
+        provider: normalizeProvider({
+          ...(state.provider || {}),
           ...action.payload,
-          isAvailable: action.payload.status === 'active' ? true : action.payload.isAvailable ?? state.provider?.isAvailable
-        }
+        }),
       };
     case 'SET_AVAILABILITY':
       return {
         ...state,
-        provider: { ...state.provider, isAvailable: action.payload }
+        provider: {
+          ...(state.provider || {}),
+          isAvailable: action.payload,
+        },
       };
     case 'CLEAR_ERROR':
       return {
         ...state,
-        error: null
+        error: null,
       };
     default:
       return state;
@@ -71,7 +81,7 @@ const initialState = {
   loading: true,
   provider: null,
   token: localStorage.getItem('providerToken'),
-  error: null
+  error: null,
 };
 
 export const AuthProvider = ({ children }) => {
@@ -81,81 +91,63 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (isInitialized.current) return;
     isInitialized.current = true;
-    
+
     const initAuth = async () => {
-      console.log('Initializing auth...');
       const token = localStorage.getItem('providerToken');
-      console.log('Token found:', !!token);
-      
-      // Clear any cached provider data to ensure fresh load
-      localStorage.removeItem('providerData');
-      
+
       if (token) {
         try {
-          console.log('Fetching user profile...');
-          // Add cache-busting timestamp
-          const timestamp = Date.now();
           const response = await providerAPI.getProfile();
-          console.log('Profile response:', response.data);
-          
-          const providerData = response.data.data;
-          console.log('Provider data:', providerData);
-          console.log('Provider status field:', providerData?.status);
-          console.log('Mapped isAvailable:', providerData?.status === 'active');
-          
-          // Store in localStorage with timestamp for debugging
-          localStorage.setItem('providerData', JSON.stringify({
-            ...providerData,
-            cachedAt: timestamp
-          }));
-          
-          // Set user in socket service for real-time features
-          socketService.setUser(providerData);
-          
+          const providerData = normalizeProvider(response?.data?.data || {});
+
           dispatch({
             type: 'LOGIN_SUCCESS',
             payload: {
               provider: providerData,
-              token
-            }
+              token,
+            },
           });
-          console.log('Auth successful - Provider status:', providerData?.status, 'mapped to isAvailable:', providerData?.status === 'active');
         } catch (error) {
-          console.error('Auth error:', error);
           localStorage.removeItem('providerToken');
           dispatch({ type: 'LOGOUT' });
         }
       } else {
-        console.log('No token found, setting loading to false');
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
 
     initAuth();
-  }, []); // Empty dependency array - run only once
+  }, []);
 
   const login = async (credentials) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const response = await providerAPI.login(credentials);
       const { token, user } = response.data.data;
-      
+
       localStorage.setItem('providerToken', token);
-      
-      // Set user in socket service for real-time features
-      socketService.setUser(user);
-      
+      let providerData = normalizeProvider(user);
+
+      try {
+        const profileResponse = await providerAPI.getProfile();
+        if (profileResponse?.data?.data) {
+          providerData = normalizeProvider(profileResponse.data.data);
+        }
+      } catch (profileError) {
+        // Fallback to login payload when profile fetch fails.
+      }
+
       dispatch({
         type: 'LOGIN_SUCCESS',
-        payload: { provider: user, token }
+        payload: { provider: providerData, token },
       });
-      
+
       return { success: true };
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Login failed';
       dispatch({
         type: 'LOGIN_FAILURE',
-        payload: errorMessage
+        payload: errorMessage,
       });
       return { success: false, error: errorMessage };
     }
@@ -163,13 +155,14 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('providerToken');
+    socketService.disconnect();
     dispatch({ type: 'LOGOUT' });
   };
 
   const updateProfile = (profileData) => {
     dispatch({
       type: 'UPDATE_PROFILE',
-      payload: profileData
+      payload: profileData,
     });
   };
 
@@ -178,37 +171,38 @@ export const AuthProvider = ({ children }) => {
   };
 
   const toggleAvailability = async (isAvailable) => {
-    console.log('Toggle availability called with:', isAvailable);
-    console.log('Current provider state:', state.provider);
-    
+    const previousAvailability = state.provider?.isAvailable;
+
     try {
-      // Update state immediately for instant UI feedback
       dispatch({
         type: 'SET_AVAILABILITY',
-        payload: isAvailable
+        payload: isAvailable,
       });
 
-      console.log('State updated to:', isAvailable);
-
-      // Emit socket event for real-time updates
       socketService.updateAvailability(isAvailable);
+      const response = await providerAPI.toggleAvailability(isAvailable);
+      const resolvedAvailability =
+        typeof response?.data?.data?.isAvailable === 'boolean'
+          ? response.data.data.isAvailable
+          : isAvailable;
 
-      // Update on backend
-      console.log('Calling API to update availability...');
-      await providerAPI.toggleAvailability(isAvailable);
-      console.log('API call successful');
-      
+      dispatch({
+        type: 'SET_AVAILABILITY',
+        payload: resolvedAvailability,
+      });
+
+      socketService.updateAvailability(resolvedAvailability);
       return { success: true };
     } catch (error) {
-      console.error('Availability toggle error:', error);
-      console.error('Error response:', error.response);
-      
-      // Don't revert immediately - let the user know there's an issue
-      // but keep the UI state as the user intended
-      const errorMessage = error.response?.data?.message || 'Failed to update availability on server';
-      
-      // Show error but don't revert the state
-      // The user can try again if needed
+      if (typeof previousAvailability === 'boolean') {
+        dispatch({
+          type: 'SET_AVAILABILITY',
+          payload: previousAvailability,
+        });
+      }
+
+      const errorMessage =
+        error.response?.data?.message || 'Failed to update availability on server';
       return { success: false, error: errorMessage };
     }
   };
@@ -219,14 +213,10 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     clearError,
-    toggleAvailability
+    toggleAvailability,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

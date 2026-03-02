@@ -1,373 +1,458 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  ArrowRight,
+  CalendarDays,
+  CircleDollarSign,
+  Clock3,
+  Layers3,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { format, subDays } from 'date-fns';
 import { providerAPI } from '../api/provider';
 import { useAuth } from '../context/AuthContext';
 import useToast from '../hooks/useToast';
-import { 
-  CalendarIcon, 
-  CheckCircleIcon, 
-  ClockIcon,
-  CurrencyDollarIcon,
-  PowerIcon,
-  UserGroupIcon
-} from '@heroicons/react/24/outline';
-import { PulseLoader } from 'react-spinners';
+import useDelayedLoading from '../hooks/useDelayedLoading';
+import Badge from '../components/ui/Badge';
+import Card from '../components/ui/Card';
+import {
+  CardSkeleton,
+  EmptyState,
+  ErrorState,
+  InlineLoader,
+  Skeleton,
+} from '../components/ui/Loader';
 
-// Provider home dashboard showing live stats, requests, and availability state.
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+
+const formatDate = (value, formatPattern) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+  return format(date, formatPattern);
+};
+
+const EMPTY_WEEK_DATA = Array.from({ length: 7 }).map((_, idx) => {
+  const date = subDays(new Date(), 6 - idx);
+  return {
+    label: format(date, 'EEE'),
+    earnings: 0,
+  };
+});
+
 const Dashboard = () => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [availableBookings, setAvailableBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [togglingAvailability, setTogglingAvailability] = useState(false);
-  
-  const { provider, updateProfile, toggleAvailability } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+  const { provider } = useAuth();
+
+  const [dashboardData, setDashboardData] = useState(null);
+  const [availableBookings, setAvailableBookings] = useState([]);
+  const [weeklyEarnings, setWeeklyEarnings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+
+  const showLoading = useDelayedLoading(loading, 350);
+
+  const loadDashboard = useCallback(
+    async ({ background = false } = {}) => {
+      if (background) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setError('');
+
+      try {
+        const endDate = new Date();
+        const startDate = subDays(endDate, 6);
+        const config = background ? { headers: { 'x-skip-global-loader': 'true' } } : {};
+
+        const [dashboardResponse, availableResponse, earningsResult] = await Promise.all([
+          providerAPI.getDashboard(config),
+          providerAPI.getAvailableBookings(config),
+          providerAPI
+            .getEarnings(startDate.toISOString(), endDate.toISOString(), config)
+            .then((response) => ({ ok: true, response }))
+            .catch(() => ({ ok: false })),
+        ]);
+
+        setDashboardData(dashboardResponse?.data?.data || {});
+        setAvailableBookings(Array.isArray(availableResponse?.data?.data) ? availableResponse.data.data : []);
+        setWeeklyEarnings(
+          earningsResult?.ok && Array.isArray(earningsResult.response?.data?.data?.dailyEarnings)
+            ? earningsResult.response.data.data.dailyEarnings
+            : []
+        );
+        setLastUpdatedAt(new Date());
+      } catch (loadError) {
+        const message =
+          loadError?.response?.data?.message || 'Unable to load dashboard. Please try again.';
+        setError(message);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    fetchDashboardData();
-    fetchAvailableBookings();
-  }, []);
+    loadDashboard();
+    const intervalId = window.setInterval(() => loadDashboard({ background: true }), 60000);
+    return () => window.clearInterval(intervalId);
+  }, [loadDashboard]);
 
-  const fetchDashboardData = async () => {
-    try {
-      console.log('Fetching dashboard data...');
-      const response = await providerAPI.getDashboard();
-      console.log('Dashboard data received:', response.data.data);
-      setDashboardData(response.data.data);
-    } catch (error) {
-      console.error('Dashboard fetch error:', error);
-      toast.error('Error', 'Failed to fetch dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const chartData = useMemo(() => {
+    if (!weeklyEarnings.length) return EMPTY_WEEK_DATA;
+    return weeklyEarnings.map((item) => ({
+      label: formatDate(item.date, 'EEE'),
+      earnings: Number(item.earnings) || 0,
+      bookings: Number(item.bookings) || 0,
+    }));
+  }, [weeklyEarnings]);
 
-  const fetchAvailableBookings = async () => {
-    try {
-      console.log('Fetching available bookings...');
-      const response = await providerAPI.getAvailableBookings();
-      console.log('Available bookings received:', response.data.data);
-      setAvailableBookings(response.data.data);
-    } catch (error) {
-      console.error('Available bookings fetch error:', error);
-      // Don't show error toast for this as it's not critical
-    }
-  };
+  const stats = useMemo(() => {
+    const totalBookings =
+      dashboardData?.totalBookings ??
+      (Number(dashboardData?.pendingBookings || 0) +
+        Number(dashboardData?.completedBookings || 0) +
+        Number(dashboardData?.todayBookings || 0));
 
-  const handleClaimBooking = async (bookingId) => {
-    try {
-      const response = await providerAPI.claimBooking(bookingId);
-      toast.success('Success', 'Booking claimed successfully');
-      
-      // Refresh both dashboard and available bookings
-      fetchDashboardData();
-      fetchAvailableBookings();
-      
-      // Navigate to bookings page
-      navigate('/bookings');
-    } catch (error) {
-      console.error('Claim booking error:', error);
-      toast.error('Error', error.response?.data?.message || 'Failed to claim booking');
-    }
-  };
+    const todayFromChart = weeklyEarnings.length
+      ? Number(weeklyEarnings[weeklyEarnings.length - 1]?.earnings || 0)
+      : 0;
 
-  const handleToggleAvailability = async () => {
-    try {
-      setTogglingAvailability(true);
-      const newAvailability = !provider.isAvailable;
-      const result = await toggleAvailability(newAvailability);
-      
-      if (result.success) {
-        toast.success(
-          newAvailability ? 'Online' : 'Offline',
-          `You are now ${newAvailability ? 'available' : 'unavailable'} for bookings`
+    return [
+      {
+        key: 'total',
+        title: 'Total Bookings',
+        value: Number(totalBookings || 0),
+        icon: Layers3,
+        onClick: () => navigate('/bookings'),
+      },
+      {
+        key: 'pending',
+        title: 'Pending',
+        value: Number(dashboardData?.pendingBookings || 0),
+        icon: Clock3,
+        onClick: () => navigate('/bookings?status=pending'),
+      },
+      {
+        key: 'completed',
+        title: 'Completed',
+        value: Number(dashboardData?.completedBookings || 0),
+        icon: CalendarDays,
+        onClick: () => navigate('/bookings?status=completed'),
+      },
+      {
+        key: 'todayEarnings',
+        title: "Today's Earnings",
+        value: formatCurrency(dashboardData?.todayEarnings ?? todayFromChart),
+        icon: CircleDollarSign,
+        onClick: () => navigate('/earnings'),
+      },
+    ];
+  }, [dashboardData, navigate, weeklyEarnings]);
+
+  const recentBookings = useMemo(
+    () => (Array.isArray(dashboardData?.recentBookings) ? dashboardData.recentBookings : []),
+    [dashboardData]
+  );
+
+  const handleClaimBooking = useCallback(
+    async (bookingId) => {
+      try {
+        await providerAPI.claimBooking(bookingId);
+        toast.success('Booking Claimed', 'Booking request moved to your queue.');
+        loadDashboard({ background: true });
+      } catch (claimError) {
+        toast.error(
+          'Action Failed',
+          claimError?.response?.data?.message || 'Could not claim booking right now.'
         );
-      } else {
-        toast.error('Error', result.error || 'Failed to update availability');
       }
-    } catch (error) {
-      toast.error('Error', 'Failed to update availability');
-    } finally {
-      setTogglingAvailability(false);
-    }
-  };
+    },
+    [loadDashboard, toast]
+  );
 
-  const statCards = [
-    {
-      name: "Today's Bookings",
-      value: dashboardData?.todayBookings || 0,
-      icon: CalendarIcon,
-      color: 'bg-blue-500',
-      onClick: () => navigate('/bookings')
-    },
-    {
-      name: 'Pending Requests',
-      value: dashboardData?.pendingBookings || 0,
-      icon: ClockIcon,
-      color: 'bg-yellow-500',
-      onClick: () => navigate('/bookings?status=pending')
-    },
-    {
-      name: 'Completed Services',
-      value: dashboardData?.completedBookings || 0,
-      icon: CheckCircleIcon,
-      color: 'bg-green-500',
-      onClick: () => navigate('/bookings?status=completed')
-    },
-    {
-      name: 'Total Earnings',
-      value: `₹${dashboardData?.totalEarnings?.toFixed(2) || '0.00'}`,
-      icon: CurrencyDollarIcon,
-      color: 'bg-purple-500',
-      onClick: () => navigate('/earnings')
-    }
-  ];
-
-  if (loading) {
+  if (showLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <PulseLoader color="#ffcc00" size={15} />
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-52" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <CardSkeleton key={idx} rows={2} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+          <div className="xl:col-span-3">
+            <CardSkeleton rows={7} />
+          </div>
+          <div className="xl:col-span-2">
+            <CardSkeleton rows={7} />
+          </div>
         </div>
       </div>
     );
   }
 
-  // Fallback if no dashboard data
-  if (!dashboardData) {
+  if (error && !dashboardData) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <p className="text-gray-600">Dashboard data is loading. Please refresh if this persists.</p>
-          </div>
-        </div>
-      </div>
+      <ErrorState
+        title="Dashboard unavailable"
+        message={error}
+        onRetry={() => loadDashboard()}
+      />
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Welcome back, {provider?.name}! Here's what's happening with your business today.
-        </p>
-      </div>
-
-      {/* Availability Toggle */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <PowerIcon className={`h-8 w-8 ${provider?.isAvailable ? 'text-green-500' : 'text-gray-400'}`} />
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">Availability Status</h3>
-              <p className="text-sm text-gray-600">
-                {provider?.isAvailable 
-                  ? 'You are currently available for new bookings' 
-                  : 'You are currently unavailable for new bookings'
-                }
-              </p>
-            </div>
-          </div>
+    <div className="space-y-4 sm:space-y-6">
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-zinc-900 sm:text-2xl">Welcome back, {provider?.name}</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Monitor bookings, earnings, and real-time updates in one place.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {refreshing ? <InlineLoader label="Refreshing..." /> : null}
           <button
-            onClick={handleToggleAvailability}
-            disabled={togglingAvailability}
-            className={`
-              relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary
-              ${provider?.isAvailable ? 'bg-green-500' : 'bg-gray-300'}
-              ${togglingAvailability ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
+            type="button"
+            onClick={() => loadDashboard({ background: true })}
+            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors duration-300 hover:bg-zinc-100"
           >
-            <span
-              className={`
-                pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200
-                ${provider?.isAvailable ? 'translate-x-5' : 'translate-x-0'}
-              `}
-            />
+            <RefreshCw className="h-4 w-4" />
+            Refresh
           </button>
         </div>
-      </div>
+      </section>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => {
+      {error ? (
+        <ErrorState compact title="Partial sync issue" message={error} onRetry={() => loadDashboard()} />
+      ) : null}
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => {
           const Icon = stat.icon;
           return (
             <button
-              key={stat.name}
+              key={stat.key}
+              type="button"
               onClick={stat.onClick}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              className="rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md sm:p-5"
             >
-              <div className="flex items-center">
-                <div className={`flex-shrink-0 rounded-md p-3 ${stat.color}`}>
-                  <Icon className="h-6 w-6 text-white" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-zinc-500">{stat.title}</p>
+                  <p className="mt-2 text-2xl font-semibold text-zinc-900">{stat.value}</p>
                 </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      {stat.name}
-                    </dt>
-                    <dd className="text-lg font-semibold text-gray-900">
-                      {stat.value}
-                    </dd>
-                  </dl>
+                <div className="rounded-xl bg-zinc-100 p-2.5 text-zinc-700">
+                  <Icon className="h-5 w-5" />
                 </div>
               </div>
             </button>
           );
         })}
-      </div>
+      </section>
 
-      {/* Available Bookings */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Available Bookings</h3>
-          <p className="text-sm text-gray-500 mt-1">New booking requests you can claim</p>
-        </div>
-        <div className="p-6">
-          {availableBookings.length > 0 ? (
-            <div className="space-y-4">
-              {availableBookings.map((booking) => (
-                <div key={booking._id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-shrink-0">
-                      <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                        <ClockIcon className="h-6 w-6 text-yellow-600" />
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {booking.customerId?.name || 'Customer'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {booking.serviceId?.name || 'Service'} • ₹{booking.serviceId?.price || booking.totalAmount || 0}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(booking.date).toLocaleDateString()} at {booking.time}
-                      </p>
-                    </div>
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+        <Card
+          title="Weekly Earnings"
+          description="Last 7 days performance"
+          className="xl:col-span-3"
+          action={
+            <button
+              type="button"
+              onClick={() => navigate('/earnings')}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 transition-colors duration-300 hover:bg-zinc-100 sm:text-sm"
+            >
+              View Details
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          }
+        >
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 12, right: 8, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#27272a" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="#27272a" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: '#71717a', fontSize: 12 }}
+                  tickFormatter={(value) => `₹${value}`}
+                />
+                <Tooltip
+                  cursor={{ stroke: '#a1a1aa', strokeWidth: 1 }}
+                  formatter={(value) => [formatCurrency(value), 'Earnings']}
+                  labelFormatter={(label) => `Day: ${label}`}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="earnings"
+                  stroke="#27272a"
+                  fill="url(#earningsGradient)"
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card title="Quick Actions" description="Speed up daily workflow" className="xl:col-span-2">
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => navigate('/bookings')}
+              className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left transition-colors duration-300 hover:bg-zinc-100"
+            >
+              <span>
+                <p className="text-sm font-semibold text-zinc-900">Open Bookings</p>
+                <p className="text-xs text-zinc-500">Review active and pending jobs</p>
+              </span>
+              <ArrowRight className="h-4 w-4 text-zinc-500" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/services')}
+              className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left transition-colors duration-300 hover:bg-zinc-100"
+            >
+              <span>
+                <p className="text-sm font-semibold text-zinc-900">Manage Services</p>
+                <p className="text-xs text-zinc-500">Update pricing and offerings</p>
+              </span>
+              <ArrowRight className="h-4 w-4 text-zinc-500" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/earnings')}
+              className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-left transition-colors duration-300 hover:bg-zinc-100"
+            >
+              <span>
+                <p className="text-sm font-semibold text-zinc-900">View Earnings</p>
+                <p className="text-xs text-zinc-500">Track payouts and trends</p>
+              </span>
+              <ArrowRight className="h-4 w-4 text-zinc-500" />
+            </button>
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+        <Card
+          title="Recent Bookings"
+          description="Latest customer activity"
+          className="xl:col-span-3"
+          action={lastUpdatedAt ? <span className="text-xs text-zinc-500">Synced {format(lastUpdatedAt, 'p')}</span> : null}
+        >
+          {recentBookings.length ? (
+            <ul className="space-y-3">
+              {recentBookings.slice(0, 6).map((booking) => (
+                <li
+                  key={booking._id}
+                  className="flex flex-col gap-2 rounded-xl border border-zinc-100 bg-zinc-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-zinc-900">
+                      {booking.customerId?.name || 'Customer'}
+                    </p>
+                    <p className="truncate text-xs text-zinc-500">
+                      {booking.serviceId?.name || 'Service'} • {formatDate(booking.date, 'dd MMM, yyyy')}
+                    </p>
                   </div>
-                  <div className="text-right">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={booking.status}>{String(booking.status || 'pending').replace('_', ' ')}</Badge>
+                    <span className="text-xs font-medium text-zinc-700">
+                      {formatCurrency(booking.totalAmount || booking.serviceId?.price || 0)}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              title="No recent bookings yet"
+              message="As soon as bookings come in, they'll appear here."
+              action={
+                <button
+                  type="button"
+                  onClick={() => navigate('/bookings')}
+                  className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors duration-300 hover:bg-zinc-800"
+                >
+                  Open Bookings
+                </button>
+              }
+            />
+          )}
+        </Card>
+
+        <Card
+          title="Available Requests"
+          description="Claim new bookings quickly"
+          className="xl:col-span-2"
+          action={<Badge variant="info">{availableBookings.length} open</Badge>}
+        >
+          {availableBookings.length ? (
+            <ul className="space-y-3">
+              {availableBookings.slice(0, 5).map((booking) => (
+                <li key={booking._id} className="rounded-xl border border-zinc-100 bg-zinc-50 p-3">
+                  <p className="text-sm font-semibold text-zinc-900">
+                    {booking.customerId?.name || 'Customer'}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {booking.serviceId?.name || 'Service'} • {formatDate(booking.date, 'dd MMM')}
+                  </p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-zinc-900">
+                      {formatCurrency(booking.totalAmount || booking.serviceId?.price || 0)}
+                    </span>
                     <button
+                      type="button"
                       onClick={() => handleClaimBooking(booking._id)}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-primary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition-colors duration-300 hover:bg-zinc-800"
                     >
-                      Claim Booking
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Claim
                     </button>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           ) : (
-            <div className="text-center py-8">
-              <ClockIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No available bookings</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                New booking requests will appear here
-              </p>
-            </div>
+            <EmptyState
+              title="No open requests"
+              message="New customer requests will show up here automatically."
+            />
           )}
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Recent Bookings</h3>
-        </div>
-        <div className="p-6">
-          {dashboardData?.recentBookings?.length > 0 ? (
-            <div className="space-y-4">
-              {dashboardData.recentBookings.map((booking) => (
-                <div key={booking._id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-shrink-0">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                        booking.status === 'pending' ? 'bg-yellow-100' :
-                        booking.status === 'accepted' ? 'bg-blue-100' :
-                        booking.status === 'in_progress' ? 'bg-purple-100' :
-                        booking.status === 'completed' ? 'bg-green-100' : 'bg-gray-100'
-                      }`}>
-                        <UserGroupIcon className={`h-6 w-6 ${
-                          booking.status === 'pending' ? 'text-yellow-600' :
-                          booking.status === 'accepted' ? 'text-blue-600' :
-                          booking.status === 'in_progress' ? 'text-purple-600' :
-                          booking.status === 'completed' ? 'text-green-600' : 'text-gray-600'
-                        }`} />
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {booking.customerId?.name || 'Customer'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {booking.serviceId?.name || 'Service'} • ₹{booking.totalAmount || booking.serviceId?.price || 0}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900 capitalize">
-                      {booking.status.replace('_', ' ')}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(booking.date).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <CalendarIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No recent bookings</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Your recent booking activity will appear here
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <button
-          onClick={() => navigate('/bookings?status=pending')}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow text-left"
-        >
-          <ClockIcon className="h-8 w-8 text-yellow-500 mb-3" />
-          <h3 className="text-lg font-medium text-gray-900">Review Requests</h3>
-          <p className="mt-1 text-sm text-gray-600">
-            Check and respond to new booking requests
-          </p>
-        </button>
-
-        <button
-          onClick={() => navigate('/services')}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow text-left"
-        >
-          <UserGroupIcon className="h-8 w-8 text-blue-500 mb-3" />
-          <h3 className="text-lg font-medium text-gray-900">Manage Services</h3>
-          <p className="mt-1 text-sm text-gray-600">
-            Add or update your service offerings
-          </p>
-        </button>
-
-        <button
-          onClick={() => navigate('/earnings')}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow text-left"
-        >
-          <CurrencyDollarIcon className="h-8 w-8 text-green-500 mb-3" />
-          <h3 className="text-lg font-medium text-gray-900">View Earnings</h3>
-          <p className="mt-1 text-sm text-gray-600">
-            Track your income and payment history
-          </p>
-        </button>
-      </div>
+        </Card>
+      </section>
     </div>
   );
 };

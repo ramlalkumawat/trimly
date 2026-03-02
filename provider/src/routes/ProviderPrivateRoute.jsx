@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { PulseLoader } from 'react-spinners';
+import { Loader2 } from 'lucide-react';
 
 // Guard component that blocks unauthenticated/non-provider access to private pages.
 const ProviderPrivateRoute = ({ children }) => {
@@ -16,10 +16,10 @@ const ProviderPrivateRoute = ({ children }) => {
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-zinc-100">
         <div className="text-center">
-          <PulseLoader color="#ffcc00" size={15} />
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-zinc-700" />
+          <p className="mt-4 text-zinc-600">Loading...</p>
         </div>
       </div>
     );

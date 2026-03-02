@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Service = require('../models/Service');
@@ -12,6 +13,11 @@ const { emitToCustomer, emitToBooking } = require('../config/socket');
 // @access  Private (Provider only)
 exports.getDashboard = asyncHandler(async (req, res, next) => {
   const providerId = req.user.id;
+  const providerObjectId = new mongoose.Types.ObjectId(providerId);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
   
   const [stats, recentBookings] = await Promise.all([
     // Stats calculations
@@ -22,8 +28,18 @@ exports.getDashboard = asyncHandler(async (req, res, next) => {
       Booking.countDocuments({ providerId, status: 'completed' }),
       Booking.countDocuments({ providerId, status: 'cancelled' }),
       Booking.aggregate([
-        { $match: { providerId: new mongoose.Types.ObjectId(providerId), status: 'completed' } },
+        { $match: { providerId: providerObjectId, status: 'completed' } },
         { $group: { _id: null, totalEarnings: { $sum: '$providerPayout' } } }
+      ]),
+      Booking.aggregate([
+        {
+          $match: {
+            providerId: providerObjectId,
+            status: 'completed',
+            completedAt: { $gte: today, $lt: tomorrow }
+          }
+        },
+        { $group: { _id: null, todayEarnings: { $sum: '$providerPayout' } } }
       ])
     ]),
     // Recent bookings
@@ -34,11 +50,6 @@ exports.getDashboard = asyncHandler(async (req, res, next) => {
       .limit(5)
   ]);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
   const todayBookingsCount = await Booking.countDocuments({
     providerId,
     scheduledTime: { $gte: today, $lt: tomorrow }
@@ -47,13 +58,15 @@ exports.getDashboard = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     data: {
-      pendingBookings: stats[0][0],
-      acceptedBookings: stats[0][1],
-      inProgressBookings: stats[0][2],
-      completedBookings: stats[0][3],
-      cancelledBookings: stats[0][4],
-      totalEarnings: stats[0][5][0]?.totalEarnings || 0,
+      pendingBookings: stats[0],
+      acceptedBookings: stats[1],
+      inProgressBookings: stats[2],
+      completedBookings: stats[3],
+      cancelledBookings: stats[4],
+      totalBookings: stats[0] + stats[1] + stats[2] + stats[3] + stats[4],
+      totalEarnings: stats[5][0]?.totalEarnings || 0,
       todayBookings: todayBookingsCount,
+      todayEarnings: stats[6][0]?.todayEarnings || 0,
       recentBookings: recentBookings
     }
   });
@@ -90,6 +103,135 @@ exports.getBookings = asyncHandler(async (req, res, next) => {
         total,
         pages: Math.ceil(total / limit)
       }
+    }
+  });
+});
+
+// @desc    Get provider earnings analytics
+// @route   GET /api/provider/earnings
+// @access  Private (Provider only)
+exports.getEarnings = asyncHandler(async (req, res, next) => {
+  const providerId = req.user.id;
+  const providerObjectId = new mongoose.Types.ObjectId(providerId);
+  const { startDate, endDate } = req.query;
+
+  let rangeStart;
+  let rangeEnd;
+
+  if (startDate) {
+    rangeStart = new Date(startDate);
+    if (Number.isNaN(rangeStart.getTime())) {
+      return next(new ErrorResponse('Invalid startDate', 400));
+    }
+  } else {
+    rangeStart = new Date();
+    rangeStart.setDate(rangeStart.getDate() - 30);
+  }
+
+  if (endDate) {
+    rangeEnd = new Date(endDate);
+    if (Number.isNaN(rangeEnd.getTime())) {
+      return next(new ErrorResponse('Invalid endDate', 400));
+    }
+  } else {
+    rangeEnd = new Date();
+  }
+
+  if (rangeStart > rangeEnd) {
+    return next(new ErrorResponse('startDate must be before endDate', 400));
+  }
+
+  const baseMatch = {
+    providerId: providerObjectId,
+    status: 'completed',
+    completedAt: { $gte: rangeStart, $lte: rangeEnd }
+  };
+
+  const amountExpression = { $ifNull: ['$providerPayout', '$totalAmount'] };
+  const completionDateExpression = { $ifNull: ['$completedAt', '$date'] };
+
+  const [summaryAgg, dailyAgg, monthlyAgg, recentTransactions] = await Promise.all([
+    Booking.aggregate([
+      { $match: baseMatch },
+      {
+        $group: {
+          _id: null,
+          totalEarnings: { $sum: amountExpression },
+          completedBookings: { $sum: 1 }
+        }
+      }
+    ]),
+    Booking.aggregate([
+      { $match: baseMatch },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: '%Y-%m-%d', date: completionDateExpression } }
+          },
+          earnings: { $sum: amountExpression },
+          bookings: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.date': 1 } }
+    ]),
+    Booking.aggregate([
+      { $match: baseMatch },
+      {
+        $group: {
+          _id: {
+            month: { $dateToString: { format: '%Y-%m-01', date: completionDateExpression } }
+          },
+          earnings: { $sum: amountExpression },
+          bookings: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.month': 1 } }
+    ]),
+    Booking.find(baseMatch)
+      .populate('customerId', 'name email')
+      .populate('serviceId', 'name')
+      .sort({ completedAt: -1 })
+      .limit(20)
+  ]);
+
+  const totalEarnings = summaryAgg[0]?.totalEarnings || 0;
+  const completedBookings = summaryAgg[0]?.completedBookings || 0;
+  const averageEarnings = completedBookings > 0 ? totalEarnings / completedBookings : 0;
+
+  res.status(200).json({
+    success: true,
+    data: {
+      totalEarnings,
+      completedBookings,
+      averageEarnings,
+      dailyAverage: averageEarnings,
+      dailyEarnings: dailyAgg.map((item) => ({
+        date: item._id.date,
+        earnings: item.earnings,
+        bookings: item.bookings
+      })),
+      monthlyEarnings: monthlyAgg.map((item) => ({
+        month: item._id.month,
+        earnings: item.earnings,
+        bookings: item.bookings
+      })),
+      recentTransactions: recentTransactions.map((item) => ({
+        _id: item._id,
+        date: item.completedAt || item.date,
+        amount: item.providerPayout || item.totalAmount || 0,
+        user: item.customerId
+          ? {
+              _id: item.customerId._id,
+              name: item.customerId.name
+            }
+          : null,
+        service: item.serviceId
+          ? {
+              _id: item.serviceId._id,
+              name: item.serviceId.name
+            }
+          : null
+      }))
     }
   });
 });
@@ -312,28 +454,35 @@ exports.completeService = asyncHandler(async (req, res, next) => {
 // @access  Private (Provider only)
 exports.toggleAvailability = asyncHandler(async (req, res, next) => {
   const providerId = req.user.id;
-  const { isAvailable } = req.body;
+  const rawAvailability = req.body?.isAvailable;
+  const isAvailable =
+    typeof rawAvailability === 'boolean'
+      ? rawAvailability
+      : rawAvailability === 'true'
+      ? true
+      : rawAvailability === 'false'
+      ? false
+      : null;
 
-  console.log('Toggle availability request for provider:', providerId);
-  console.log('Requested availability:', isAvailable);
+  if (isAvailable === null) {
+    return next(new ErrorResponse('isAvailable must be a boolean', 400));
+  }
 
-  const provider = await User.findById(providerId);
+  const provider = await User.findByIdAndUpdate(
+    providerId,
+    { $set: { isAvailable } },
+    { new: true }
+  ).select('isAvailable');
+
   if (!provider) {
     return next(new ErrorResponse('Provider not found', 404));
   }
-
-  console.log('Current provider status:', provider.status);
-  
-  provider.status = isAvailable ? 'active' : 'inactive';
-  await provider.save();
-
-  console.log('Updated provider status to:', provider.status);
 
   res.status(200).json({
     success: true,
     message: `Provider availability updated to ${isAvailable ? 'online' : 'offline'}`,
     data: {
-      isAvailable: provider.status === 'active'
+      isAvailable: provider.isAvailable !== false
     }
   });
 });
@@ -585,24 +734,99 @@ exports.getProfile = asyncHandler(async (req, res, next) => {
 // @access  Private (Provider only)
 exports.updateProfile = asyncHandler(async (req, res, next) => {
   const providerId = req.user.id;
-  const allowedFields = ['firstName', 'lastName', 'name', 'email', 'businessName', 'category', 'description', 'address', 'location', 'serviceRadiusKm'];
-  
-  const updateData = {};
-  allowedFields.forEach(field => {
-    if (req.body[field] !== undefined) {
-      updateData[field] = req.body[field];
-    }
-  });
+  const provider = await User.findById(providerId);
+  if (!provider) {
+    return next(new ErrorResponse('Provider not found', 404));
+  }
 
-  const provider = await User.findByIdAndUpdate(
-    providerId,
-    updateData,
-    { new: true, runValidators: true }
-  ).select('-password');
+  if (typeof req.body.name === 'string') {
+    const nextName = req.body.name.trim();
+    if (!nextName) {
+      return next(new ErrorResponse('Name is required', 400));
+    }
+    provider.name = nextName;
+  }
+
+  if (typeof req.body.phone === 'string') {
+    const nextPhone = req.body.phone.trim();
+    if (!nextPhone) {
+      return next(new ErrorResponse('Phone number is required', 400));
+    }
+
+    if (nextPhone !== provider.phone) {
+      const existingPhone = await User.findOne({
+        phone: nextPhone,
+        _id: { $ne: providerId }
+      });
+      if (existingPhone) {
+        return next(new ErrorResponse('Phone number already registered', 400));
+      }
+    }
+    provider.phone = nextPhone;
+  }
+
+  if (typeof req.body.description === 'string') {
+    provider.description = req.body.description.trim();
+  }
+
+  if (typeof req.body.serviceArea === 'string') {
+    provider.serviceArea = req.body.serviceArea.trim();
+  }
+
+  if (typeof req.body.profileImage === 'string') {
+    provider.profileImage = req.body.profileImage;
+  }
+
+  if (typeof req.body.businessName === 'string') {
+    provider.businessName = req.body.businessName.trim();
+  }
+
+  if (typeof req.body.category === 'string') {
+    provider.category = req.body.category;
+  }
+
+  if (req.body.address !== undefined) {
+    provider.address = req.body.address;
+  }
+
+  if (req.body.location !== undefined) {
+    provider.location = req.body.location;
+  }
+
+  if (req.body.serviceRadiusKm !== undefined) {
+    provider.serviceRadiusKm = req.body.serviceRadiusKm;
+  }
+
+  const wantsPasswordChange =
+    req.body.currentPassword !== undefined || req.body.newPassword !== undefined;
+
+  if (wantsPasswordChange) {
+    if (!req.body.currentPassword || !req.body.newPassword) {
+      return next(
+        new ErrorResponse('Both currentPassword and newPassword are required to change password', 400)
+      );
+    }
+
+    if (req.body.newPassword.length < 8) {
+      return next(new ErrorResponse('New password must be at least 8 characters', 400));
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(req.body.currentPassword, provider.password);
+    if (!isCurrentPasswordValid) {
+      return next(new ErrorResponse('Current password is incorrect', 400));
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    provider.password = await bcrypt.hash(req.body.newPassword, salt);
+  }
+
+  await provider.save();
+
+  const updatedProvider = await User.findById(providerId).select('-password');
 
   res.status(200).json({
     success: true,
     message: 'Profile updated successfully',
-    data: provider
+    data: updatedProvider
   });
 });

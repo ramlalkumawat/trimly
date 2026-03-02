@@ -6,18 +6,19 @@ import useToast from './useToast';
 // Hook that registers real-time provider listeners and surfaces toast notifications.
 const useSocket = () => {
   const { provider, token } = useAuth();
-  const toast = useToast();
+  const { success, info, warning } = useToast();
   const hasJoinedRoom = useRef(false);
 
   useEffect(() => {
-    if (!provider || !token) return;
+    const providerId = provider?._id || provider?.id;
+    if (!providerId || !token) return;
 
     // Connect to socket with user info
-    socketService.connect(token, provider);
+    socketService.connect(token);
 
     // Join provider room for real-time updates
     if (!hasJoinedRoom.current) {
-      socketService.joinProviderRoom(provider._id);
+      socketService.joinProviderRoom(providerId);
       hasJoinedRoom.current = true;
     }
 
@@ -25,13 +26,13 @@ const useSocket = () => {
     socketService.onNewBooking((booking) => {
       // Only show notification if provider is available
       if (provider.isAvailable) {
-        toast.success(
+        success(
           'New Booking Request!',
           `${booking.user?.name} requested ${booking.service?.name}`,
           { duration: 8000 }
         );
       } else {
-        toast.info(
+        info(
           'Missed Booking',
           `You missed a booking request from ${booking.user?.name} while offline`,
           { duration: 8000 }
@@ -49,7 +50,7 @@ const useSocket = () => {
         cancelled: 'Booking has been cancelled'
       };
 
-      toast.info(
+      info(
         'Booking Updated',
         statusMessages[booking.status] || 'Booking status updated'
       );
@@ -57,7 +58,7 @@ const useSocket = () => {
 
     // Listen for booking cancellations
     socketService.onBookingCancelled((booking) => {
-      toast.warning(
+      warning(
         'Booking Cancelled',
         `${booking.user?.name} cancelled their booking for ${booking.service?.name}`
       );
@@ -65,16 +66,19 @@ const useSocket = () => {
 
     // Cleanup on unmount
     return () => {
-      if (hasJoinedRoom.current && provider) {
-        socketService.leaveProviderRoom(provider._id);
+      if (hasJoinedRoom.current) {
+        socketService.leaveProviderRoom(providerId);
         hasJoinedRoom.current = false;
       }
       
       socketService.removeEventListener('new_booking');
+      socketService.removeEventListener('new_booking_request');
       socketService.removeEventListener('booking_updated');
+      socketService.removeEventListener('booking_status_updated');
       socketService.removeEventListener('booking_cancelled');
+      socketService.removeEventListener('booking_rejected');
     };
-  }, [provider, token, toast]);
+  }, [info, provider, success, token, warning]);
 
   // Disconnect socket when user logs out
   useEffect(() => {

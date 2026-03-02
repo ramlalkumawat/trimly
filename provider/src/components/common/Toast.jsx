@@ -1,50 +1,50 @@
 import React from 'react';
-import { CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 
 // Toast primitives and container used for in-app feedback messages.
 const Toast = ({ toast, onRemove }) => {
   const getIcon = () => {
     switch (toast.type) {
       case 'success':
-        return <CheckCircleIcon className="h-5 w-5 text-green-400" />;
+        return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
       case 'error':
-        return <XCircleIcon className="h-5 w-5 text-red-400" />;
+        return <XCircle className="h-5 w-5 text-rose-500" />;
       case 'warning':
-        return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />;
+        return <AlertTriangle className="h-5 w-5 text-amber-500" />;
       default:
-        return <CheckCircleIcon className="h-5 w-5 text-blue-400" />;
+        return <Info className="h-5 w-5 text-sky-500" />;
     }
   };
 
   const getBackgroundColor = () => {
     switch (toast.type) {
       case 'success':
-        return 'bg-green-50 border-green-200';
+        return 'bg-emerald-50 border-emerald-100';
       case 'error':
-        return 'bg-red-50 border-red-200';
+        return 'bg-rose-50 border-rose-100';
       case 'warning':
-        return 'bg-yellow-50 border-yellow-200';
+        return 'bg-amber-50 border-amber-100';
       default:
-        return 'bg-blue-50 border-blue-200';
+        return 'bg-sky-50 border-sky-100';
     }
   };
 
   const getTextColor = () => {
     switch (toast.type) {
       case 'success':
-        return 'text-green-800';
+        return 'text-emerald-900';
       case 'error':
-        return 'text-red-800';
+        return 'text-rose-900';
       case 'warning':
-        return 'text-yellow-800';
+        return 'text-amber-900';
       default:
-        return 'text-blue-800';
+        return 'text-sky-900';
     }
   };
 
   return (
     <div className={`
-      max-w-sm w-full border rounded-lg shadow-lg p-4 pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden
+      w-full max-w-sm overflow-hidden rounded-2xl border p-4 shadow-lg pointer-events-auto
       ${getBackgroundColor()}
     `}>
       <div className="flex items-start">
@@ -67,7 +67,7 @@ const Toast = ({ toast, onRemove }) => {
             onClick={() => onRemove(toast.id)}
           >
             <span className="sr-only">Close</span>
-            <XMarkIcon className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -79,7 +79,7 @@ const ToastContainer = ({ toasts, onRemove }) => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed right-4 top-4 z-[60] space-y-2">
       {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} onRemove={onRemove} />
       ))}

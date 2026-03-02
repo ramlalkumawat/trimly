@@ -1,166 +1,195 @@
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Power,
+  ScissorsSquare,
+  X,
+} from 'lucide-react';
+import { NAV_ITEMS } from '../../constants/navigation';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  HomeIcon, 
-  CalendarIcon, 
-  CheckCircleIcon, 
-  CurrencyDollarIcon,
-  WrenchScrewdriverIcon,
-  UserIcon,
-  XMarkIcon,
-  ArrowRightOnRectangleIcon
-} from '@heroicons/react/24/outline';
+import Badge from '../ui/Badge';
+import useToast from '../../hooks/useToast';
 
-// Responsive side navigation for provider dashboard sections.
-const Sidebar = ({ isOpen, toggleSidebar }) => {
-  const { provider, logout } = useAuth();
+const isPathActive = (currentPath, navPath) => {
+  if (navPath === '/bookings') return currentPath.startsWith('/bookings');
+  return currentPath === navPath;
+};
+
+// Primary navigation rail with desktop collapse and mobile drawer support.
+const Sidebar = ({ mobileOpen, onMobileClose, collapsed, onToggleCollapse }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { provider, logout, toggleAvailability } = useAuth();
+  const toast = useToast();
+
+  const navItems = useMemo(
+    () =>
+      NAV_ITEMS.map((item) => ({
+        ...item,
+        isActive: isPathActive(location.pathname, item.path),
+      })),
+    [location.pathname]
+  );
+
+  const handleNavigate = (path) => {
+    navigate(path);
+    if (mobileOpen) {
+      onMobileClose();
+    }
+  };
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const menuItems = [
-    {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: HomeIcon,
-      current: location.pathname === '/dashboard'
-    },
-    {
-      name: 'Booking Requests',
-      href: '/bookings?status=pending',
-      icon: CalendarIcon,
-      current: location.pathname === '/bookings' && location.search.includes('status=pending')
-    },
-    {
-      name: 'Accepted Bookings',
-      href: '/bookings?status=accepted',
-      icon: CheckCircleIcon,
-      current: location.pathname === '/bookings' && location.search.includes('status=accepted')
-    },
-    {
-      name: 'Services',
-      href: '/services',
-      icon: WrenchScrewdriverIcon,
-      current: location.pathname === '/services'
-    },
-    {
-      name: 'Earnings',
-      href: '/earnings',
-      icon: CurrencyDollarIcon,
-      current: location.pathname === '/earnings'
-    },
-    {
-      name: 'Profile',
-      href: '/profile',
-      icon: UserIcon,
-      current: location.pathname === '/profile'
+  const handleToggleAvailability = async () => {
+    const nextState = !provider?.isAvailable;
+    const result = await toggleAvailability(nextState);
+    if (result.success) {
+      toast.success('Status Updated', `You are now ${nextState ? 'online' : 'offline'}`);
+    } else {
+      toast.error('Error', result.error || 'Failed to update availability');
     }
-  ];
+  };
 
   return (
     <>
-      {/* Mobile sidebar overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 md:hidden"
-          onClick={toggleSidebar}
+      {mobileOpen ? (
+        <button
+          type="button"
+          aria-label="Close menu overlay"
+          className="fixed inset-0 z-40 bg-zinc-900/50 backdrop-blur-[1px] md:hidden"
+          onClick={onMobileClose}
         />
-      )}
+      ) : null}
 
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:inset-0
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="flex items-center justify-between h-16 px-3 sm:px-4 border-b border-gray-200">
-          <h1 className="text-base sm:text-lg font-bold text-primary truncate">Trimly Provider</h1>
+      <aside
+        className={[
+          'fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r border-zinc-200 bg-white transition-all duration-300',
+          'md:z-30',
+          collapsed ? 'w-72 md:w-[88px]' : 'w-72 md:w-72',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        ].join(' ')}
+      >
+        <div className="flex h-16 items-center justify-between border-b border-zinc-200 px-4">
           <button
             type="button"
-            className="md:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-            onClick={toggleSidebar}
+            onClick={() => handleNavigate('/dashboard')}
+            className="flex min-w-0 items-center gap-2 text-left"
           >
-            <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-        </div>
-
-        <div className="flex flex-col h-full">
-          {/* Provider info */}
-          <div className="p-3 sm:p-4 border-b border-gray-200">
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              <div className="flex-shrink-0">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary flex items-center justify-center">
-                  <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">
-                  {provider?.name || 'Provider'}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {provider?.isAvailable ? (
-                    <span className="flex items-center text-green-600">
-                      <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full mr-1"></span>
-                      <span className="hidden sm:inline">Online</span>
-                      <span className="sm:hidden">On</span>
-                    </span>
-                  ) : (
-                    <span className="flex items-center text-gray-500">
-                      <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full mr-1"></span>
-                      <span className="hidden sm:inline">Offline</span>
-                      <span className="sm:hidden">Off</span>
-                    </span>
-                  )}
-                </p>
-              </div>
+            <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-white">
+              <ScissorsSquare className="h-4 w-4" />
             </div>
-          </div>
+            {!collapsed ? (
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-zinc-900">Trimly Provider</p>
+                <p className="text-xs text-zinc-500">Operations Panel</p>
+              </div>
+            ) : null}
+          </button>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-1 sm:px-2 py-3 sm:py-4 space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => {
-                    navigate(item.href);
-                    if (isOpen) toggleSidebar();
-                  }}
-                  className={`
-                    w-full group flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors
-                    ${item.current
-                      ? 'bg-primary text-white'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }
-                  `}
-                >
-                  <Icon className={`
-                    mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0
-                    ${item.current ? 'text-white' : 'text-gray-400 group-hover:text-gray-500'}
-                  `} />
-                  <span className="truncate">{item.name}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Logout button */}
-          <div className="border-t border-gray-200 p-1 sm:p-2 mt-auto">
+          <div className="flex items-center gap-1">
             <button
-              onClick={handleLogout}
-              className="w-full group flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors border border-red-200"
+              type="button"
+              onClick={onToggleCollapse}
+              className="hidden rounded-xl border border-zinc-200 p-2 text-zinc-600 transition-colors duration-300 hover:bg-zinc-100 md:inline-flex"
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              <ArrowRightOnRectangleIcon className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-red-500 group-hover:text-red-600" />
-              <span className="font-medium">Logout</span>
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={onMobileClose}
+              className="rounded-xl border border-zinc-200 p-2 text-zinc-600 transition-colors duration-300 hover:bg-zinc-100 md:hidden"
+              aria-label="Close sidebar"
+            >
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>
-      </div>
+
+        <div className="border-b border-zinc-200 px-4 py-4">
+          <div className={collapsed ? 'flex justify-center' : 'flex items-center justify-between'}>
+            {!collapsed ? (
+              <div>
+                <p className="max-w-[180px] truncate text-sm font-semibold text-zinc-900">
+                  {provider?.name || 'Provider'}
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">{provider?.email || 'provider@trimly.com'}</p>
+              </div>
+            ) : null}
+            <Badge variant={provider?.isAvailable ? 'success' : 'default'}>
+              {provider?.isAvailable ? 'Online' : 'Offline'}
+            </Badge>
+          </div>
+          {!collapsed ? (
+            <button
+              type="button"
+              onClick={handleToggleAvailability}
+              className={[
+                'mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-300',
+                provider?.isAvailable
+                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
+              ].join(' ')}
+            >
+              <Power className="h-4 w-4" />
+              {provider?.isAvailable ? 'Go Offline' : 'Go Online'}
+            </button>
+          ) : null}
+        </div>
+
+        <nav className="custom-scrollbar flex-1 overflow-y-auto px-3 py-4">
+          <ul className="space-y-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.key}>
+                  <button
+                    type="button"
+                    onClick={() => handleNavigate(item.path)}
+                    className={[
+                      'group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300',
+                      item.isActive
+                        ? 'bg-zinc-900 text-white shadow-sm'
+                        : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900',
+                      collapsed ? 'justify-center' : '',
+                    ].join(' ')}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <Icon
+                      className={[
+                        'h-4 w-4 shrink-0',
+                        item.isActive ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-700',
+                      ].join(' ')}
+                    />
+                    {!collapsed ? <span className="truncate">{item.label}</span> : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        <div className="border-t border-zinc-200 p-3">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={[
+              'inline-flex w-full items-center gap-3 rounded-xl border border-zinc-200 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors duration-300 hover:bg-zinc-100',
+              collapsed ? 'justify-center' : '',
+            ].join(' ')}
+            title={collapsed ? 'Logout' : undefined}
+          >
+            <LogOut className="h-4 w-4" />
+            {!collapsed ? 'Logout' : null}
+          </button>
+        </div>
+      </aside>
     </>
   );
 };

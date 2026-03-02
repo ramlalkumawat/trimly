@@ -80,14 +80,21 @@ export const authAPI = {
 export const providerAPI = {
   // Auth
   login: authAPI.login,
-  getProfile: authAPI.getMe,
+  getProfile: () => api.get('/provider/profile'),
   
   // Dashboard
-  getDashboard: () => api.get('/provider/dashboard'),
+  getDashboard: (config = {}) => api.get('/provider/dashboard', config),
   
   // Bookings
-  getBookings: (status) => api.get(`/provider/bookings${status ? `?status=${status}` : ''}`),
-  getAvailableBookings: () => api.get('/provider/available-bookings'),
+  getBookings: (status, config = {}) =>
+    api.get('/provider/bookings', {
+      ...config,
+      params: {
+        ...(config.params || {}),
+        ...(status ? { status } : {}),
+      },
+    }),
+  getAvailableBookings: (config = {}) => api.get('/provider/available-bookings', config),
   claimBooking: (bookingId) => api.put(`/provider/bookings/${bookingId}/claim`),
   acceptBooking: (bookingId) => api.put(`/provider/bookings/${bookingId}/accept`),
   rejectBooking: (bookingId) => api.put(`/provider/bookings/${bookingId}/reject`),
@@ -107,7 +114,15 @@ export const providerAPI = {
   updateProfile: (profileData) => api.put('/provider/profile', profileData),
   
   // Earnings
-  getEarnings: (startDate, endDate) => api.get(`/provider/earnings?startDate=${startDate}&endDate=${endDate}`),
+  getEarnings: (startDate, endDate, config = {}) =>
+    api.get('/provider/earnings', {
+      ...config,
+      params: {
+        ...(config.params || {}),
+        startDate,
+        endDate,
+      },
+    }),
 };
 
 // Export combined API object

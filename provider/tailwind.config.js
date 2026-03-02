@@ -8,18 +8,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#ffcc00',
-        'primary-hover': '#e6b800',
-        'text-primary': '#111',
-        'input-bg': '#f7f7f7'
+        primary: '#18181b',
+        'primary-hover': '#27272a',
+        'text-primary': '#09090b',
+        'input-bg': '#f4f4f5'
       },
       borderRadius: {
         xl: '0.75rem',
         '2xl': '1rem'
       },
       boxShadow: {
-        subtle: '0 1px 3px 0 rgba(0, 0, 0, 0.08)',
-        card: '0 2px 8px 0 rgba(0, 0, 0, 0.08)'
+        subtle: '0 4px 12px rgba(24, 24, 27, 0.04)',
+        card: '0 12px 30px rgba(24, 24, 27, 0.08)'
       },
       spacing: {
         18: '4.5rem',

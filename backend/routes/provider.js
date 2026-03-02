@@ -17,6 +17,7 @@ const {
   startService,
   completeService,
   toggleAvailability,
+  getEarnings,
   getServices,
   addService,
   updateService,
@@ -35,6 +36,7 @@ router.use(checkProviderStatus);
 
 // Dashboard routes
 router.get('/dashboard', getDashboard);
+router.get('/earnings', getEarnings);
 
 // Booking routes
 router.get('/bookings', getBookings);

@@ -1,9 +1,10 @@
-import React, { Suspense, lazy, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProviderPrivateRoute from './routes/ProviderPrivateRoute';
 import Header from './components/common/Header';
 import Sidebar from './components/common/Sidebar';
+import BottomNav from './components/common/BottomNav';
 import { ToastContainer } from './components/common/Toast';
 import useToast from './hooks/useToast';
 import useSocket from './hooks/useSocket';
@@ -20,12 +21,17 @@ const Register = lazy(() => import('./pages/Register'));
 
 // Root app shell: handles auth routes, protected provider layout, and global toasts.
 function AppContent() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const location = useLocation();
   const toast = useToast();
-  
+
   // Initialize Socket.io for real-time updates
   useSocket();
+
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname]);
 
   return (
     <>
@@ -37,12 +43,29 @@ function AppContent() {
             path="/*"
             element={
               <ProviderPrivateRoute>
-                <div className="flex w-full min-h-screen bg-gray-50">
-                  <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-                  <div className="flex-1 flex flex-col md:ml-64 transition-all duration-300">
-                    <Header toggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
-                    <main className="flex-1 p-3 sm:p-4 lg:p-6 pt-16 md:pt-16 min-h-[calc(100vh-4rem)]">
-                      <div className="w-full max-w-7xl mx-auto">
+                <div className="app-shell-bg min-h-screen bg-zinc-100">
+                  <Sidebar
+                    mobileOpen={mobileSidebarOpen}
+                    onMobileClose={() => setMobileSidebarOpen(false)}
+                    collapsed={sidebarCollapsed}
+                    onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+                  />
+                  <div
+                    className={[
+                      'min-h-screen transition-all duration-300',
+                      sidebarCollapsed ? 'md:pl-[88px]' : 'md:pl-72',
+                    ].join(' ')}
+                  >
+                    <Header
+                      onOpenMobileMenu={() => {
+                        setSidebarCollapsed(false);
+                        setMobileSidebarOpen(true);
+                      }}
+                      collapsed={sidebarCollapsed}
+                      onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+                    />
+                    <main className="px-4 py-4 pb-24 sm:px-6 lg:px-8 lg:py-6 lg:pb-8">
+                      <div className="mx-auto w-full max-w-7xl">
                         <Routes>
                           <Route index element={<Navigate to="/dashboard" />} />
                           <Route path="dashboard" element={<Dashboard />} />
@@ -54,6 +77,7 @@ function AppContent() {
                         </Routes>
                       </div>
                     </main>
+                    <BottomNav />
                   </div>
                 </div>
               </ProviderPrivateRoute>

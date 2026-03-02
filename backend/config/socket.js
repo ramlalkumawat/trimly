@@ -53,7 +53,8 @@ const configureSocket = (io) => {
     // If provider, join provider-specific room and available providers room
     if (socket.user.role === 'provider') {
       socket.join(`provider_${socket.user._id}`);
-      if (socket.user.status === 'active' && socket.user.approved && socket.user.isApproved) {
+      const providerIsAvailable = socket.user.isAvailable !== false;
+      if (socket.user.status === 'active' && socket.user.approved && socket.user.isApproved && providerIsAvailable) {
         socket.join('available_providers');
         console.log(`Provider ${socket.user._id} joined available providers room`);
       }
@@ -77,8 +78,21 @@ const configureSocket = (io) => {
     });
 
     // Handle provider availability updates
-    socket.on('update_availability', (isAvailable) => {
+    socket.on('update_availability', (payload) => {
       if (socket.user.role === 'provider') {
+        const isAvailable =
+          typeof payload === 'boolean'
+            ? payload
+            : typeof payload?.isAvailable === 'boolean'
+            ? payload.isAvailable
+            : null;
+
+        if (isAvailable === null) {
+          return;
+        }
+
+        socket.user.isAvailable = isAvailable;
+
         if (isAvailable && socket.user.status === 'active' && socket.user.approved && socket.user.isApproved) {
           socket.join('available_providers');
         } else {

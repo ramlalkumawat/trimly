@@ -23,9 +23,20 @@ class ProviderMatchingService {
         role: 'provider',
         status: 'active',
         approved: true,
-        $or: [
-          { serviceIds: service._id },
-          { category: service.category }
+        isApproved: true,
+        $and: [
+          {
+            $or: [
+              { isAvailable: true },
+              { isAvailable: { $exists: false } }
+            ]
+          },
+          {
+            $or: [
+              { serviceIds: service._id },
+              { category: service.category }
+            ]
+          }
         ]
       }).select('name phone businessName serviceRadiusKm location category serviceIds');
 

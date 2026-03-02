@@ -73,6 +73,10 @@ const userSchema = new mongoose.Schema({
     enum: ['active', 'inactive', 'pending', 'rejected', 'suspended'],
     default: 'active'
   },
+  isAvailable: {
+    type: Boolean,
+    default: true
+  },
   verified: {
     type: Boolean,
     default: false
@@ -101,6 +105,14 @@ const userSchema = new mongoose.Schema({
   description: {
     type: String,
     trim: true
+  },
+  serviceArea: {
+    type: String,
+    trim: true
+  },
+  profileImage: {
+    type: String,
+    default: ''
   },
   serviceIds: [{
     type: mongoose.Schema.Types.ObjectId,

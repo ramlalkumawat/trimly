@@ -10,7 +10,7 @@ class SocketService {
   }
 
   connect(token) {
-    if (this.socket && this.connected) {
+    if (this.socket) {
       return this.socket;
     }
 
@@ -22,12 +22,10 @@ class SocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('Connected to server');
       this.connected = true;
     });
 
     this.socket.on('disconnect', () => {
-      console.log('Disconnected from server');
       this.connected = false;
     });
 
@@ -71,7 +69,7 @@ class SocketService {
 
   // Join provider room (handled automatically by backend)
   joinProviderRoom(providerId) {
-    if (this.socket) {
+    if (this.socket && providerId) {
       // Backend automatically joins provider to their room
       console.log(`Provider ${providerId} room joined automatically`);
     }
@@ -79,14 +77,14 @@ class SocketService {
 
   // Leave provider room
   leaveProviderRoom(providerId) {
-    if (this.socket) {
-      this.socket.emit('leave_booking', providerId);
+    if (this.socket && providerId) {
+      // Backend handles provider room membership automatically.
     }
   }
 
   // Update provider availability
   updateAvailability(isAvailable) {
-    if (this.socket) {
+    if (this.socket && this.connected) {
       this.socket.emit('update_availability', isAvailable);
     }
   }

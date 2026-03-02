@@ -144,7 +144,10 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Login failed';
+      const errorMessage =
+        error.code === 'ECONNABORTED'
+          ? 'Login request timed out. Please check network and try again.'
+          : error.response?.data?.message || 'Login failed';
       dispatch({
         type: 'LOGIN_FAILURE',
         payload: errorMessage,

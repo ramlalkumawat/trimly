@@ -10,7 +10,7 @@ export default function Input({ error = false, className = '', ...props }){
   return (
     <input
       {...props}
-      className={`input-default border rounded-xl px-4 py-3 outline-none placeholder-gray-400 transition-all duration-200 focus-ring ${stateClasses} ${className}`}
+      className={`input-default w-full border rounded-xl px-4 py-3 outline-none placeholder-gray-400 transition-all duration-200 focus-ring ${stateClasses} ${className}`}
     />
   )
 }

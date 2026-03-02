@@ -95,9 +95,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center py-8 sm:py-12">
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="grid lg:grid-cols-2 bg-white rounded-3xl border border-gray-100 shadow-soft overflow-hidden">
+    <div className="min-h-[calc(100dvh-4rem)] overflow-x-hidden py-4 sm:py-8 md:py-10">
+      <div className="mx-auto w-full max-w-5xl px-1 sm:px-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-soft overflow-hidden">
           <section className="hidden lg:flex bg-gradient-to-br from-yellow-100 via-amber-50 to-white p-8 xl:p-10">
             <div className="flex flex-col justify-between w-full">
               <div>
@@ -112,14 +112,14 @@ export default function Login() {
             </div>
           </section>
 
-          <section className="p-5 sm:p-8">
+          <section className="p-4 sm:p-7 md:p-8">
             <div className="mb-6">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{title}</h1>
               <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
             </div>
 
             {error && (
-              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2">
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2 break-words">
                 {error}
               </div>
             )}
@@ -135,6 +135,9 @@ export default function Login() {
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Enter your name"
                       className="pl-9"
+                      autoCapitalize="words"
+                      autoCorrect="off"
+                      spellCheck={false}
                       error={Boolean(fieldErrors.name)}
                       disabled={loading}
                     />
@@ -147,14 +150,17 @@ export default function Login() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone or Email</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. +91 9999999999 or you@email.com"
-                    className="pl-9"
-                    error={Boolean(fieldErrors.phone)}
-                    disabled={loading}
-                  />
+                    <Input
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. +91 9999999999 or you@email.com"
+                      className="pl-9"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      error={Boolean(fieldErrors.phone)}
+                      disabled={loading}
+                    />
                 </div>
                 {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
               </div>
@@ -163,15 +169,18 @@ export default function Login() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter password"
-                    className="pl-9 pr-10"
-                    error={Boolean(fieldErrors.password)}
-                    disabled={loading}
-                  />
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter password"
+                      className="pl-9 pr-10"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      error={Boolean(fieldErrors.password)}
+                      disabled={loading}
+                    />
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
@@ -196,7 +205,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-2xl btn-primary font-semibold text-black disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-2.5 sm:py-3 rounded-2xl btn-primary font-semibold text-black disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? 'Please wait...' : isRegister ? 'Create Account' : 'Login'}
               </button>

@@ -9,11 +9,12 @@ const rawApiBaseUrl =
 const API_BASE_URL = rawApiBaseUrl.endsWith('/api')
   ? rawApiBaseUrl
   : `${rawApiBaseUrl.replace(/\/$/, '')}/api`;
+const API_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 25000);
 
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: Number.isFinite(API_TIMEOUT_MS) ? API_TIMEOUT_MS : 25000,
   headers: {
     'Content-Type': 'application/json',
   },

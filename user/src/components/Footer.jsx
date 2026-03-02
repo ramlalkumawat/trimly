@@ -48,7 +48,23 @@ export default function Footer() {
 
         <div className="border-t border-slate-700 mt-10 pt-6 text-center space-y-1">
           <p className="text-sm text-slate-400">© {new Date().getFullYear()} Trimly. All rights reserved.</p>
-          <p className="text-xs text-slate-500">build by ramlal kumawat</p>
+          <p className="text-xs text-slate-500">
+            Designed &amp; Developed by{' '}
+            <a
+              href="https://www.instagram.com/_ramlal__kumawat/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative inline-block font-semibold tracking-wide transition-transform duration-300 hover:scale-[1.03]"
+            >
+              <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+                Ramlal Kumawat
+              </span>
+              <span
+                aria-hidden="true"
+                className="absolute -bottom-0.5 left-0 h-px w-0 bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300 group-hover:w-full"
+              />
+            </a>
+          </p>
         </div>
       </div>
     </footer>

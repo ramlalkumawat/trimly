@@ -6,6 +6,12 @@ import SlotButton from '../components/SlotButton';
 // Example time slots used for the UI demo; real availability isn't provided by API
 const sampleTimes = ['09:00', '09:30', '10:00', '10:30', '11:00', '13:00', '14:30', '15:00'];
 
+const getLocalToday = () => {
+  const now = new Date();
+  const timezoneOffset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - timezoneOffset).toISOString().slice(0, 10);
+};
+
 // Slots page: choose a date and pick an available time slot for a service
 export default function Slots() {
   const { id } = useParams();
@@ -14,7 +20,8 @@ export default function Slots() {
   const [error, setError] = useState(null);
 
   // Default date: today's date in YYYY-MM-DD format which works with <input type="date">
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const today = getLocalToday();
+  const [date, setDate] = useState(today);
   // `selected` stores the chosen time string (e.g. '09:00')
   const [selected, setSelected] = useState(null);
   const nav = useNavigate();
@@ -49,7 +56,11 @@ export default function Slots() {
           id="slot-date"
           type="date"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          min={today}
+          onChange={(e) => {
+            const nextDate = e.target.value;
+            setDate(nextDate < today ? today : nextDate);
+          }}
           className="input-default px-4 py-2 rounded-xl"
         />
         <div className="text-gray-600">

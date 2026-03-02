@@ -12,10 +12,12 @@ export default function Success() {
 
   // Auto-redirect to profile after 5 seconds if booking exists
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
     if (booking) {
       const timer = setTimeout(() => {
         console.log('Auto-redirecting to profile...');
-        nav('/profile');
+        nav('/profile', { state: { scrollToTop: true } });
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -48,7 +50,7 @@ export default function Success() {
       <div className="font-mono font-semibold text-xl mb-4">{booking._id || booking.id}</div>
       <div className="text-sm text-gray-500 mb-4">You will be redirected to your profile in 5 seconds...</div>
       <button
-        onClick={() => nav('/profile')}
+        onClick={() => nav('/profile', { state: { scrollToTop: true } })}
         className="w-full sm:w-auto px-6 py-3 rounded-2xl btn-primary font-semibold"
       >
         Go to Profile Now

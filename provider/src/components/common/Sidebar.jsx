@@ -188,6 +188,25 @@ const Sidebar = ({ mobileOpen, onMobileClose, collapsed, onToggleCollapse }) => 
             <LogOut className="h-4 w-4" />
             {!collapsed ? 'Logout' : null}
           </button>
+          {!collapsed ? (
+            <p className="mt-3 text-center text-[11px] leading-relaxed text-zinc-500">
+              Designed &amp; Developed by{' '}
+              <a
+                href="https://www.instagram.com/_ramlal__kumawat/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative inline-block font-semibold tracking-wide transition-transform duration-300 hover:scale-[1.03]"
+              >
+                <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+                  Ramlal Kumawat
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="absolute -bottom-0.5 left-0 h-px w-0 bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300 group-hover:w-full"
+                />
+              </a>
+            </p>
+          ) : null}
         </div>
       </aside>
     </>

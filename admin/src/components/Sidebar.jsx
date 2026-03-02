@@ -74,15 +74,21 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           <div className="pt-4 border-t border-gray-200 mt-auto">
             <div className="text-xs text-gray-500 text-center space-y-1">
               <div>{new Date().getFullYear()} Trimly Admin</div>
-              <div>
-                bulid by{' '}
+              <div className="leading-relaxed">
+                Designed &amp; Developed by{' '}
                 <a
-                  href="https://www.instagram.com/_ramlal__kumawat?igsh=cTRrdzZ1aTk1ajFv"
+                  href="https://www.instagram.com/_ramlal__kumawat/"
                   target="_blank"
-                  rel="noreferrer"
-                  className="text-blue-600 hover:text-blue-700"
+                  rel="noopener noreferrer"
+                  className="group relative inline-block font-semibold tracking-wide transition-transform duration-300 hover:scale-[1.03]"
                 >
-                  ramlal kumawat
+                  <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+                    Ramlal Kumawat
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="absolute -bottom-0.5 left-0 h-px w-0 bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300 group-hover:w-full"
+                  />
                 </a>
               </div>
             </div>

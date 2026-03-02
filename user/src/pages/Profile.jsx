@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import useSocket from '../hooks/useSocket';
 
@@ -20,6 +20,7 @@ const readableStatus = (status) =>
 
 export default function Profile() {
   const nav = useNavigate();
+  const location = useLocation();
   const token = localStorage.getItem('token');
   const user = useMemo(() => {
     try {
@@ -55,6 +56,12 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
+    if (location.state?.scrollToTop) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [location.state]);
+
+  useEffect(() => {
     // Subscribe each booking room so only relevant updates are pushed to this user.
     bookings.forEach((booking) => joinBookingRoom(booking._id));
     return () => {
@@ -69,6 +76,10 @@ export default function Profile() {
       prev.map((item) => (item._id === payload.booking._id ? { ...item, ...payload.booking } : item))
     );
     setNotice(payload.message || defaultNotice);
+
+    if (payload.booking.status === 'completed') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {

@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Phone, UserCircle2 } from 'lucide-react';
 import Input from '../components/Input';
 import api from '../utils/api';
 import { AuthSticker } from '../components/illustrations/SalonIllustrations';
+import { clearAuthSession } from '../utils/auth';
 
 const phoneRegex = /^\+?[0-9\s()-]{8,20}$/;
 
 export default function Login() {
+  const location = useLocation();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -17,6 +19,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const nav = useNavigate();
+  const roleBlockedMessage = location.state?.error || '';
 
   const title = useMemo(() => (isRegister ? 'Create your account' : 'Welcome back'), [isRegister]);
   const subtitle = useMemo(
@@ -70,17 +73,16 @@ export default function Login() {
       const res = await api.post(url, payload);
 
       const { token, user } = res.data.data;
+      if (user.role !== 'user') {
+        clearAuthSession();
+        setError('This panel is only for customers. Please login from your dedicated provider/admin panel.');
+        return;
+      }
+
       localStorage.setItem('token', token);
       localStorage.setItem('role', user.role);
       localStorage.setItem('user', JSON.stringify(user));
-
-      if (user.role === 'user') {
-        nav('/services');
-      } else if (user.role === 'provider') {
-        window.location.href = '/provider';
-      } else if (user.role === 'admin') {
-        window.location.href = '/admin';
-      }
+      nav('/services');
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Authentication failed');
     } finally {
@@ -118,9 +120,9 @@ export default function Login() {
               <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
             </div>
 
-            {error && (
+            {(error || roleBlockedMessage) && (
               <div className="mb-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm px-3 py-2 break-words">
-                {error}
+                {error || roleBlockedMessage}
               </div>
             )}
 

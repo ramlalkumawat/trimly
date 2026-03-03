@@ -13,8 +13,22 @@ const errorHandler = (err, req, res, next) => {
 
   // mongoose duplicate key
   if (err.code === 11000) {
-    const message = 'Duplicate field value entered';
-    error = new ErrorResponse(message, 400);
+    const duplicateKeys = Object.keys(err.keyPattern || {});
+    const duplicateMessage = err.keyValue
+      ? `${Object.entries(err.keyValue)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(', ')} already exists`
+      : 'Duplicate field value entered';
+
+    if (duplicateKeys.includes('customerId') && duplicateKeys.includes('date') && duplicateKeys.includes('time')) {
+      error = new ErrorResponse('You have already booked this slot', 409);
+    } else if (duplicateKeys.includes('email')) {
+      error = new ErrorResponse('Email already registered', 409);
+    } else if (duplicateKeys.includes('phone')) {
+      error = new ErrorResponse('Phone number already registered', 409);
+    } else {
+      error = new ErrorResponse(duplicateMessage, 409);
+    }
   }
 
   // mongoose validation error

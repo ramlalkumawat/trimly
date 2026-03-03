@@ -1,11 +1,17 @@
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
+const {
+  normalizeEmail,
+  isEmailIdentifier,
+  buildPhoneLookupQuery,
+  resolveLoginIdentifier,
+  resolveRegistrationIdentifiers
+} = require('../utils/authIdentity');
 
 // Authentication controller for register/login/session lookup and token lifecycle.
-const JWT_EXPIRES_IN = '7d';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const signToken = (user) => {
   if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET is not configured');
@@ -51,67 +57,51 @@ const canRegisterAdmin = async (adminKey = '') => {
   return false;
 };
 
-const normalizeEmail = (value = '') => value.trim().toLowerCase();
+const escapeRegex = (value = '') =>
+  String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const normalizePhoneForStorage = (value = '') => {
-  const raw = String(value || '').trim();
-  const digitsOnly = raw.replace(/\D/g, '');
-  if (!digitsOnly) {
-    return raw;
-  }
-  return raw.startsWith('+') ? `+${digitsOnly}` : digitsOnly;
-};
-
-const buildPhoneLookupQuery = (value = '') => {
-  const raw = String(value || '').trim();
-  const digitsOnly = raw.replace(/\D/g, '');
-
-  const exactCandidates = new Set(
-    [raw, raw.replace(/\s+/g, ''), raw.replace(/[^\d+]/g, ''), digitsOnly].filter(Boolean)
-  );
-
-  if (digitsOnly) {
-    exactCandidates.add(`+${digitsOnly}`);
+const findUserByLoginIdentifier = async (loginId = '') => {
+  const identifier = String(loginId || '').trim();
+  if (!identifier) {
+    return null;
   }
 
-  const conditions = [];
+  if (isEmailIdentifier(identifier)) {
+    const normalized = normalizeEmail(identifier);
+    const userByEmail = await User.findOne({ email: normalized });
+    if (userByEmail) {
+      return userByEmail;
+    }
 
-  if (digitsOnly) {
-    const fullDigitsPattern = digitsOnly.split('').join('\\D*');
-    conditions.push({
-      phone: {
-        $regex: new RegExp(`^\\+?\\D*${fullDigitsPattern}\\D*$`)
-      }
-    });
+    // Legacy compatibility: older records may have email in the `phone` field.
+    let userByLegacyPhone = await User.findOne(buildPhoneLookupQuery(normalized));
+    if (!userByLegacyPhone && normalized !== identifier) {
+      userByLegacyPhone = await User.findOne(buildPhoneLookupQuery(identifier));
+    }
+    if (!userByLegacyPhone) {
+      userByLegacyPhone = await User.findOne({
+        phone: { $regex: new RegExp(`^${escapeRegex(identifier)}$`, 'i') }
+      });
+    }
+    return userByLegacyPhone;
   }
 
-  if (digitsOnly.length >= 10) {
-    const lastTenDigits = digitsOnly.slice(-10);
-    const lastTenPattern = lastTenDigits.split('').join('\\D*');
-    exactCandidates.add(lastTenDigits);
-    exactCandidates.add(`+${lastTenDigits}`);
-
-    conditions.push({
-      phone: {
-        $regex: new RegExp(`^\\+?\\D*(?:\\d\\D*){0,3}${lastTenPattern}\\D*$`)
-      }
-    });
-  }
-
-  conditions.unshift({ phone: { $in: [...exactCandidates] } });
-  return conditions.length === 1 ? conditions[0] : { $or: conditions };
+  return User.findOne(buildPhoneLookupQuery(identifier));
 };
 
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = asyncHandler(async (req, res, next) => {
-  const { name, firstName, lastName, phone, email, password, role, adminKey } = req.body;
-  const normalizedPhone = normalizePhoneForStorage(phone);
-  const normalizedEmail = email ? normalizeEmail(email) : undefined;
+  const { name, firstName, lastName, phone, email, identifier, password, role, adminKey } = req.body;
+  const { normalizedPhone, normalizedEmail } = resolveRegistrationIdentifiers({
+    phone,
+    email,
+    identifier
+  });
 
   if ((!name && !firstName) || !normalizedPhone || !password) {
-    return next(new ErrorResponse('Name, phone and password are required', 400));
+    return next(new ErrorResponse('Name, email/phone and password are required', 400));
   }
 
   if (password.length < 6) {
@@ -129,25 +119,24 @@ exports.register = asyncHandler(async (req, res, next) => {
 
   let existing = await User.findOne(buildPhoneLookupQuery(normalizedPhone));
   if (existing) {
-    return next(new ErrorResponse('Phone number already registered', 400));
+    return next(new ErrorResponse('Phone number already registered', 409));
   }
 
   if (normalizedEmail) {
     existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
-      return next(new ErrorResponse('Email already registered', 400));
+      return next(new ErrorResponse('Email already registered', 409));
     }
   }
 
-  const salt = await bcrypt.genSalt(10);
-  const hashed = await bcrypt.hash(password, salt);
+  const hashed = await User.hashPassword(password);
 
   const user = await User.create({
     name: name || `${firstName || ''} ${lastName || ''}`.trim(),
     firstName,
     lastName,
     phone: normalizedPhone,
-    email: normalizedEmail,
+    email: normalizedEmail || undefined,
     password: hashed,
     role: safeRole,
     status: safeRole === 'provider' ? 'pending' : 'active',
@@ -174,28 +163,19 @@ exports.register = asyncHandler(async (req, res, next) => {
 // @route   POST /api/auth/login
 // @access  Public
 exports.login = asyncHandler(async (req, res, next) => {
-  const { phone, email, password } = req.body;
-  const loginId = (phone || email || '').trim();
+  const { phone, email, identifier, password } = req.body;
+  const loginId = resolveLoginIdentifier({ identifier, phone, email });
   if (!loginId || !password) {
     return next(new ErrorResponse('Phone/Email and password are required', 400));
   }
 
-  let user;
-  if (loginId.includes('@')) {
-    const normalizedEmail = normalizeEmail(loginId);
-    user = await User.findOne({ email: normalizedEmail });
-    if (!user && normalizedEmail !== loginId) {
-      user = await User.findOne({ email: loginId });
-    }
-  } else {
-    user = await User.findOne(buildPhoneLookupQuery(loginId));
-  }
+  const user = await findUserByLoginIdentifier(loginId);
   
   if (!user) {
     return next(new ErrorResponse('Invalid credentials', 401));
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await user.comparePassword(password);
   if (!isMatch) {
     return next(new ErrorResponse('Invalid credentials', 401));
   }
@@ -221,18 +201,14 @@ exports.login = asyncHandler(async (req, res, next) => {
 // @route   POST /api/auth/forgot-password
 // @access  Public
 exports.forgotPassword = asyncHandler(async (req, res, next) => {
-  const { email, phone } = req.body;
-  const loginId = (email || phone || '').trim();
+  const { email, phone, identifier } = req.body;
+  const loginId = resolveLoginIdentifier({ identifier, phone, email });
 
   if (!loginId) {
     return next(new ErrorResponse('Please provide your email or phone number', 400));
   }
 
-  const query = loginId.includes('@')
-    ? { $or: [{ email: normalizeEmail(loginId) }, { email: loginId }] }
-    : buildPhoneLookupQuery(loginId);
-
-  const user = await User.findOne(query);
+  const user = await findUserByLoginIdentifier(loginId);
   if (!user) {
     return next(new ErrorResponse('No user found with this email/phone', 404));
   }

@@ -1,9 +1,10 @@
 import React, { Suspense, lazy, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import AdminPrivateRoute from './routes/AdminPrivateRoute';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import ScrollToTop from './components/ScrollToTop';
 import { ToastContainer } from './components/common/Toast';
 import useToast from './hooks/useToast';
 import RouteLoader from './components/common/RouteLoader';
@@ -25,12 +26,22 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 
 // Main admin app shell: public auth routes + protected dashboard routes.
 function AppContent() {
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const toast = useToast();
+
+  const openSidebar = () => setSidebarOpen(true);
+  const closeSidebar = () => setSidebarOpen(false);
+  const toggleSidebarCollapsed = () => setSidebarCollapsed((prev) => !prev);
+
+  React.useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   return (
     <>
+      <ScrollToTop />
       <Suspense fallback={<RouteLoader />}>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -40,12 +51,25 @@ function AppContent() {
             path="/*"
             element={
               <AdminPrivateRoute>
-                <div className="flex w-full min-h-screen bg-gray-50">
-                  <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-                  <div className="flex-1 flex flex-col md:ml-64">
-                    <Header toggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
-                    <main className="flex-1 p-4 sm:p-6 pt-20 md:pt-16">
-                      <div className="max-w-7xl mx-auto">
+                <div className="min-h-screen bg-admin-app">
+                  <Sidebar
+                    isOpen={sidebarOpen}
+                    isCollapsed={sidebarCollapsed}
+                    onClose={closeSidebar}
+                    onToggleCollapse={toggleSidebarCollapsed}
+                  />
+                  <div
+                    className={`min-h-screen transition-[padding] duration-300 ease-out ${
+                      sidebarCollapsed ? 'lg:pl-24' : 'lg:pl-72'
+                    }`}
+                  >
+                    <Header
+                      onOpenSidebar={openSidebar}
+                      onToggleCollapse={toggleSidebarCollapsed}
+                      sidebarCollapsed={sidebarCollapsed}
+                    />
+                    <main className="px-4 pb-8 pt-20 sm:px-6 lg:px-8 lg:pt-24">
+                      <div className="mx-auto w-full max-w-[1400px]">
                         <Routes>
                           <Route index element={<Navigate to="/dashboard" />} />
                           <Route path="dashboard" element={<Dashboard />} />

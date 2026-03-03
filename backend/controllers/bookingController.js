@@ -11,7 +11,7 @@ const BOOKING_POPULATE = [
   { path: 'paymentId' }
 ];
 
-const withPagination = (query, page = 1, limit = 20) => {
+const withPagination = (page = 1, limit = 20) => {
   const safePage = Math.max(Number(page) || 1, 1);
   const safeLimit = Math.max(Number(limit) || 20, 1);
   return {
@@ -19,6 +19,59 @@ const withPagination = (query, page = 1, limit = 20) => {
     limit: safeLimit,
     page: safePage
   };
+};
+
+const resolveActorId = (user = {}) => String(user.id || user._id || '').trim();
+
+// Build booking filters with an optional `$expr` fallback for legacy documents where
+// relationship fields may be stored as strings instead of ObjectIds.
+const buildScopedFilter = ({ role, actorId, status, useTypeSafeExpr = false }) => {
+  const filter = {};
+
+  if (status) {
+    filter.status = status;
+  }
+
+  if (!actorId) {
+    return filter;
+  }
+
+  if (role === 'user') {
+    if (useTypeSafeExpr) {
+      filter.$expr = { $eq: [{ $toString: '$customerId' }, actorId] };
+    } else {
+      filter.customerId = actorId;
+    }
+  } else if (role === 'provider') {
+    if (useTypeSafeExpr) {
+      filter.$expr = { $eq: [{ $toString: '$providerId' }, actorId] };
+    } else {
+      filter.providerId = actorId;
+    }
+  }
+
+  return filter;
+};
+
+const fetchPaginatedBookings = async ({ filter, skip, limit }) => {
+  const [bookings, total] = await Promise.all([
+    Booking.find(filter)
+      .populate(BOOKING_POPULATE)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Booking.countDocuments(filter)
+  ]);
+
+  return { bookings, total };
+};
+
+const readId = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (value._id) return String(value._id);
+  if (typeof value.toString === 'function') return String(value.toString());
+  return '';
 };
 
 // @desc create booking with provider matching
@@ -39,8 +92,14 @@ exports.createBooking = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Missing booking information', 400));
   }
 
+  const actorId = resolveActorId(req.user);
+
+  if (!actorId) {
+    return next(new ErrorResponse('Not authorized', 401));
+  }
+
   const booking = await BookingLifecycleService.createBooking({
-    customerId: req.user.id,
+    customerId: actorId,
     serviceId,
     date,
     time,
@@ -63,26 +122,42 @@ exports.createBooking = asyncHandler(async (req, res, next) => {
 exports.getBookings = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status } = req.query;
   const { skip, limit: safeLimit, page: safePage } = withPagination(page, limit);
-  const filter = {};
+  const actorId = resolveActorId(req.user);
 
-  if (req.user.role === 'user') {
-    filter.customerId = req.user.id;
-  } else if (req.user.role === 'provider') {
-    filter.providerId = req.user.id;
+  const filter = buildScopedFilter({
+    role: req.user.role,
+    actorId,
+    status
+  });
+
+  let { bookings, total } = await fetchPaginatedBookings({
+    filter,
+    skip,
+    limit: safeLimit
+  });
+
+  // Fallback query for legacy records where customerId/providerId was stored with a mismatched type.
+  if (
+    total === 0 &&
+    actorId &&
+    (req.user.role === 'user' || req.user.role === 'provider')
+  ) {
+    const legacyFilter = buildScopedFilter({
+      role: req.user.role,
+      actorId,
+      status,
+      useTypeSafeExpr: true
+    });
+
+    const fallbackResult = await fetchPaginatedBookings({
+      filter: legacyFilter,
+      skip,
+      limit: safeLimit
+    });
+
+    bookings = fallbackResult.bookings;
+    total = fallbackResult.total;
   }
-
-  if (status) {
-    filter.status = status;
-  }
-
-  const [bookings, total] = await Promise.all([
-    Booking.find(filter)
-      .populate(BOOKING_POPULATE)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(safeLimit),
-    Booking.countDocuments(filter)
-  ]);
 
   res.status(200).json({
     success: true,
@@ -179,11 +254,15 @@ exports.getBookingDetails = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Booking not found', 404));
   }
 
-  if (req.user.role === 'user' && booking.customerId._id.toString() !== req.user.id) {
+  const actorId = resolveActorId(req.user);
+  const bookingCustomerId = readId(booking.customerId);
+  const bookingProviderId = readId(booking.providerId);
+
+  if (req.user.role === 'user' && bookingCustomerId !== actorId) {
     return next(new ErrorResponse('Not authorized to view this booking', 403));
   }
 
-  if (req.user.role === 'provider' && (!booking.providerId || booking.providerId._id.toString() !== req.user.id)) {
+  if (req.user.role === 'provider' && bookingProviderId !== actorId) {
     return next(new ErrorResponse('Not authorized to view this booking', 403));
   }
 

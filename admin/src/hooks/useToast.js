@@ -1,46 +1,64 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-// Local toast state manager used by pages to push/remove notifications.
+let toastStore = [];
+const listeners = new Set();
+
+const notify = () => {
+  listeners.forEach((listener) => listener(toastStore));
+};
+
+const subscribe = (listener) => {
+  listeners.add(listener);
+  listener(toastStore);
+  return () => listeners.delete(listener);
+};
+
+const pushToast = (message, type = 'success', duration = 3500) => {
+  const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  toastStore = [...toastStore, { id, message, type, duration }];
+  notify();
+
+  if (duration > 0) {
+    window.setTimeout(() => {
+      toastStore = toastStore.filter((toast) => toast.id !== id);
+      notify();
+    }, duration);
+  }
+
+  return id;
+};
+
+const removeToastById = (id) => {
+  toastStore = toastStore.filter((toast) => toast.id !== id);
+  notify();
+};
+
+const clearToasts = () => {
+  toastStore = [];
+  notify();
+};
+
+// Global toast store hook so any page can dispatch toasts and a single container can render them.
 const useToast = () => {
-  const [toasts, setToasts] = useState([]);
+  const [toasts, setToasts] = useState(toastStore);
 
-  const addToast = useCallback((message, type = 'success', duration = 3000) => {
-    const id = Date.now();
-    const newToast = { id, message, type, duration };
-    
-    setToasts(prev => [...prev, newToast]);
-    
-    if (duration > 0) {
-      setTimeout(() => {
-        removeToast(id);
-      }, duration);
-    }
-    
-    return id;
+  useEffect(() => subscribe(setToasts), []);
+
+  const addToast = useCallback((message, type = 'success', duration = 3500) => {
+    return pushToast(message, type, duration);
   }, []);
 
   const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
+    removeToastById(id);
   }, []);
 
-  const success = useCallback((message, duration) => {
-    return addToast(message, 'success', duration);
-  }, [addToast]);
-
-  const error = useCallback((message, duration) => {
-    return addToast(message, 'error', duration);
-  }, [addToast]);
-
-  const warning = useCallback((message, duration) => {
-    return addToast(message, 'warning', duration);
-  }, [addToast]);
-
-  const info = useCallback((message, duration) => {
-    return addToast(message, 'info', duration);
-  }, [addToast]);
+  const success = useCallback((message, duration) => addToast(message, 'success', duration), [addToast]);
+  const error = useCallback((message, duration) => addToast(message, 'error', duration), [addToast]);
+  const warning = useCallback((message, duration) => addToast(message, 'warning', duration), [addToast]);
+  const info = useCallback((message, duration) => addToast(message, 'info', duration), [addToast]);
 
   const clearAll = useCallback(() => {
-    setToasts([]);
+    clearToasts();
   }, []);
 
   return {
@@ -51,7 +69,7 @@ const useToast = () => {
     error,
     warning,
     info,
-    clearAll
+    clearAll,
   };
 };
 

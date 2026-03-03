@@ -60,6 +60,16 @@ class BookingLifecycleService {
     const normalizedDate = new Date(scheduledTime);
     normalizedDate.setHours(0, 0, 0, 0);
 
+    const existingSlotBooking = await Booking.findOne({
+      customerId,
+      date: normalizedDate,
+      time
+    }).select('_id status');
+
+    if (existingSlotBooking) {
+      throw new ErrorResponse('You have already booked this slot', 409);
+    }
+
     const hasLocation =
       customerLocation &&
       typeof customerLocation.latitude === 'number' &&
@@ -101,10 +111,8 @@ class BookingLifecycleService {
     });
 
     const payment = await Payment.create({
-      transactionId:
-        paymentMethod && paymentMethod !== 'cash'
-          ? `txn_${booking._id.toString()}_${Date.now()}`
-          : undefined,
+      // Always set a transaction id to avoid duplicate-null issues on legacy unique indexes.
+      transactionId: `txn_${paymentMethod || 'cash'}_${booking._id.toString()}_${Date.now()}`,
       bookingId: booking._id,
       customerId,
       providerId: matchedProvider ? matchedProvider._id : null,

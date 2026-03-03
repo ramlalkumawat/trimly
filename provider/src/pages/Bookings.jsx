@@ -7,7 +7,6 @@ import {
   MapPin,
   Phone,
   RefreshCw,
-  UserRound,
   X,
 } from 'lucide-react';
 import { providerAPI } from '../api/provider';
@@ -338,14 +337,6 @@ const Bookings = () => {
                     </button>
                   ) : null}
 
-                  <button
-                    type="button"
-                    onClick={() => navigate('/profile')}
-                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors duration-300 hover:bg-zinc-100"
-                  >
-                    <UserRound className="h-4 w-4" />
-                    Open Profile
-                  </button>
                 </div>
               </Card>
             );

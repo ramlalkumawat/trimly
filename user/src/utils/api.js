@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { beginRequest, endRequest } from './loadingBus';
+import { clearAuthSession } from './auth';
 
 const rawBackendUrl =
   import.meta.env.VITE_BACKEND_URL ||
@@ -32,9 +33,24 @@ const api = axios.create({
   }
 });
 
+const normalizeEndpoint = (url = '') => {
+  if (!url) return '';
+
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      return new URL(url).pathname.replace(/^\/api/, '');
+    } catch (error) {
+      return url;
+    }
+  }
+
+  return url.replace(/^\/api/, '');
+};
+
 const isProtectedEndpoint = (url = '') => {
+  const endpoint = normalizeEndpoint(url);
   const protectedPrefixes = ['/bookings', '/user', '/auth/me', '/auth/refresh', '/auth/logout'];
-  return protectedPrefixes.some((prefix) => url.startsWith(prefix));
+  return protectedPrefixes.some((prefix) => endpoint.startsWith(prefix));
 };
 
 // attach token automatically
@@ -84,6 +100,13 @@ api.interceptors.response.use(
       const endpoint = error.config?.url || '';
       const message = error.response?.data?.message || 'Unauthorized';
       console.warn(`[auth-debug][frontend] 401 ${method} ${endpoint}: ${message}`);
+
+      if (isProtectedEndpoint(endpoint)) {
+        clearAuthSession();
+        if (window.location.pathname !== '/login') {
+          window.location.replace('/login');
+        }
+      }
     }
 
     return Promise.reject(error);

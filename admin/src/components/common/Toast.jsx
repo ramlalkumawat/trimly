@@ -30,50 +30,50 @@ const Toast = ({ toast, onRemove }) => {
   const getBackgroundColor = () => {
     switch (toast.type) {
       case 'success':
-        return 'bg-green-50 border-green-200';
+        return 'bg-emerald-50 border-emerald-200';
       case 'error':
         return 'bg-red-50 border-red-200';
       case 'warning':
-        return 'bg-yellow-50 border-yellow-200';
+        return 'bg-amber-50 border-amber-200';
       case 'info':
         return 'bg-blue-50 border-blue-200';
       default:
-        return 'bg-gray-50 border-gray-200';
+        return 'bg-slate-50 border-slate-200';
     }
   };
 
   const getTextColor = () => {
     switch (toast.type) {
       case 'success':
-        return 'text-green-800';
+        return 'text-emerald-800';
       case 'error':
         return 'text-red-800';
       case 'warning':
-        return 'text-yellow-800';
+        return 'text-amber-800';
       case 'info':
         return 'text-blue-800';
       default:
-        return 'text-gray-800';
+        return 'text-slate-800';
     }
   };
 
   return (
     <div
-      className={`max-w-sm w-full ${getBackgroundColor()} border rounded-lg shadow-lg pointer-events-auto ring-1 ring-black ring-opacity-5 transform transition-all duration-300 ease-in-out`}
+      className={`pointer-events-auto w-full max-w-sm transform rounded-2xl border ${getBackgroundColor()} shadow-lg transition-all duration-300 ease-out`}
     >
       <div className="p-4">
-        <div className="flex items-start">
+        <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
             {getIcon()}
           </div>
-          <div className="ml-3 w-0 flex-1">
+          <div className="w-0 flex-1">
             <p className={`text-sm font-medium ${getTextColor()}`}>
               {toast.message}
             </p>
           </div>
-          <div className="ml-4 flex-shrink-0 flex">
+          <div className="ml-2 flex flex-shrink-0">
             <button
-              className={`inline-flex ${getTextColor()} hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 rounded-md`}
+              className={`inline-flex rounded-md ${getTextColor()} transition hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1`}
               onClick={() => onRemove(toast.id)}
             >
               <span className="sr-only">Dismiss</span>
@@ -90,7 +90,7 @@ const ToastContainer = ({ toasts, onRemove }) => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed right-4 top-4 z-[110] space-y-2">
       {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} onRemove={onRemove} />
       ))}

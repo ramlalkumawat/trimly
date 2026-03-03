@@ -17,23 +17,23 @@ const LoadingSkeleton = ({ className = "", rows = 3 }) => {
 
 export const TableSkeleton = ({ columns = 5, rows = 10 }) => {
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+    <div className="admin-card overflow-hidden">
+      <table className="min-w-full divide-y divide-slate-200">
+        <thead className="bg-slate-50">
           <tr>
             {Array.from({ length: columns }).map((_, index) => (
               <th key={index} className="px-6 py-3">
-                <div className="h-4 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 animate-pulse rounded bg-slate-200" />
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="divide-y divide-slate-200 bg-white">
           {Array.from({ length: rows }).map((_, rowIndex) => (
             <tr key={rowIndex}>
               {Array.from({ length: columns }).map((_, colIndex) => (
                 <td key={colIndex} className="px-6 py-4 whitespace-nowrap">
-                  <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                  <div className="h-4 animate-pulse rounded bg-slate-100" />
                 </td>
               ))}
             </tr>
@@ -46,13 +46,13 @@ export const TableSkeleton = ({ columns = 5, rows = 10 }) => {
 
 export const CardSkeleton = ({ count = 1 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="bg-white rounded-lg shadow-sm p-6">
+        <div key={index} className="admin-card p-6">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-4" />
-            <div className="h-8 bg-gray-200 rounded w-1/2 mb-2" />
-            <div className="h-3 bg-gray-100 rounded w-full" />
+            <div className="mb-4 h-4 w-3/4 rounded bg-slate-200" />
+            <div className="mb-2 h-8 w-1/2 rounded bg-slate-200" />
+            <div className="h-3 w-full rounded bg-slate-100" />
           </div>
         </div>
       ))}

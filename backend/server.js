@@ -57,6 +57,7 @@ app.use('/api/admin', require('./routes/admin')); // admin-specific routes
 app.use('/api/bookings', require('./routes/bookings')); // general booking routes
 app.use('/api/services', require('./routes/services')); // general service routes
 app.use('/api/users', require('./routes/users')); // legacy user management routes
+app.use('/api/site', require('./routes/site')); // marketing and support inquiry routes
 
 // error handler should be last
 app.use(errorHandler);

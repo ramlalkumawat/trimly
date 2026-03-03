@@ -7,7 +7,7 @@ function ServiceImage({ service }) {
 
   if (!imageSrc) {
     return (
-      <div className="h-36 rounded-xl bg-gradient-to-br from-amber-100 to-yellow-50 border border-amber-100 flex items-center justify-center">
+      <div className="h-36 rounded-xl bg-gradient-to-br from-amber-100 to-orange-50 border border-amber-200/70 flex items-center justify-center">
         <Sparkles className="w-8 h-8 text-amber-500" />
       </div>
     );
@@ -17,7 +17,7 @@ function ServiceImage({ service }) {
     <img
       src={imageSrc}
       alt={service.name}
-      className="h-36 w-full rounded-xl object-cover border border-gray-100"
+      className="h-36 w-full rounded-xl object-cover border border-amber-200/60"
       loading="lazy"
       onError={(event) => {
         event.currentTarget.style.display = 'none';
@@ -30,14 +30,14 @@ export default function ServiceCard({ service }) {
   const serviceId = service._id || service.id;
 
   return (
-    <article className="bg-white rounded-2xl border border-gray-100 shadow-soft p-4 sm:p-5 flex flex-col card-hover">
+    <article className="rounded-2xl border border-amber-100/80 bg-gradient-to-br from-[#fffdf8] via-[#fff9ee] to-[#fff2df] shadow-soft p-4 sm:p-5 flex flex-col card-hover">
       <ServiceImage service={service} />
       <h3 className="mt-4 font-bold text-lg text-gray-900">{service.name}</h3>
-      <p className="text-sm text-gray-600 mt-2 flex-1">{service.description}</p>
+      <p className="text-sm text-gray-700 mt-2 flex-1">{service.description}</p>
 
-      <div className="mt-5 flex items-center justify-between gap-3">
+      <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-amber-100/80 bg-white/75 px-3 py-2">
         <div>
-          <div className="inline-flex items-center gap-1 text-xs text-gray-500">
+          <div className="inline-flex items-center gap-1 text-xs text-amber-800">
             <Clock3 className="w-3.5 h-3.5" />
             {service.duration || 'Flexible'}
           </div>
@@ -52,7 +52,7 @@ export default function ServiceCard({ service }) {
 
         <Link
           to={`/services/${serviceId}`}
-          className="px-4 py-2 rounded-xl btn-primary text-black font-semibold whitespace-nowrap"
+          className="px-4 py-2 rounded-xl bg-amber-400 text-black font-semibold whitespace-nowrap hover:bg-amber-300 transition-colors"
         >
           Book Now
         </Link>

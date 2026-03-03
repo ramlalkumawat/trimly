@@ -9,12 +9,18 @@ const {
   getMe
 } = require('../controllers/authController');
 const { protect } = require('../middlewares/authMiddleware');
+const { handleValidation } = require('../middlewares/validationMiddleware');
+const {
+  registerValidator,
+  loginValidator,
+  forgotPasswordValidator
+} = require('../validators/authValidators');
 
 // Authentication routes for registration, login, password reset, and session endpoints.
-router.post('/register', register);
-router.post('/login', login);
-router.post('/forgot-password', forgotPassword);
-router.post('/forgotpassword', forgotPassword);
+router.post('/register', registerValidator, handleValidation, register);
+router.post('/login', loginValidator, handleValidation, login);
+router.post('/forgot-password', forgotPasswordValidator, handleValidation, forgotPassword);
+router.post('/forgotpassword', forgotPasswordValidator, handleValidation, forgotPassword);
 router.post('/logout', protect, logout);
 router.post('/refresh', protect, refreshToken);
 router.get('/me', protect, getMe);

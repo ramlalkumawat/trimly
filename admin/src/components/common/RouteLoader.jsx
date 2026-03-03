@@ -3,10 +3,10 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export default function RouteLoader() {
   return (
-    <div className="min-h-[40vh] flex items-center justify-center">
-      <div className="inline-flex items-center gap-2 px-5 py-3 bg-white border border-gray-200 rounded-2xl shadow-sm">
-        <ArrowPathIcon className="w-5 h-5 text-amber-600 animate-spin" />
-        <span className="text-sm font-medium text-gray-700">Loading page...</span>
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+        <ArrowPathIcon className="h-5 w-5 animate-spin text-blue-700" />
+        <span className="text-sm font-medium text-slate-700">Loading page...</span>
       </div>
     </div>
   );

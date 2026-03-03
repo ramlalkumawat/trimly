@@ -1,31 +1,77 @@
-/* Global Tailwind and custom utility styles for admin dashboard. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
+:root {
+  --admin-primary: #1e40af;
+  --admin-primary-soft: #dbeafe;
+  --admin-accent: #059669;
+  --admin-warning: #d97706;
+  --admin-surface: #ffffff;
+  --admin-border: #e2e8f0;
+  --admin-bg: #f4f7fc;
+  --admin-text: #0f172a;
+}
+
+html,
+body,
+#root {
   height: 100%;
 }
 
-body {
-  @apply bg-bg-default text-slate-900 antialiased;
-  font-family: 'Poppins', 'Nunito Sans', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+html {
+  scroll-behavior: smooth;
 }
 
-/* custom global styles */
-.bg-bg-default {
-  background-color: #f4f6f8;
+body {
+  margin: 0;
+  font-family: 'Poppins', 'Nunito Sans', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  color: var(--admin-text);
+  background-color: var(--admin-bg);
+  background-image: radial-gradient(circle at 10% -10%, #e0e7ff 0%, rgba(224, 231, 255, 0) 42%),
+    radial-gradient(circle at 100% 0%, #dbeafe 0%, rgba(219, 234, 254, 0) 30%);
+  @apply antialiased;
 }
-.input-default {
-  @apply border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500;
+
+.bg-admin-app {
+  background-color: var(--admin-bg);
 }
-.btn-primary {
-  @apply bg-amber-600 text-white font-semibold rounded-lg transition-colors hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500;
+
+.admin-card {
+  @apply rounded-2xl border border-slate-200/80 bg-white shadow-sm;
+}
+
+.admin-card-hover {
+  @apply transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md;
+}
+
+.admin-section-title {
+  @apply text-xl font-semibold text-slate-900 sm:text-2xl;
+}
+
+.admin-section-subtitle {
+  @apply mt-1 text-sm text-slate-500;
+}
+
+.admin-btn-primary {
+  @apply inline-flex items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+}
+
+.admin-btn-secondary {
+  @apply inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+}
+
+.admin-btn-danger {
+  @apply inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2;
+}
+
+.admin-input {
+  @apply block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:bg-slate-100;
 }
 
 @keyframes globalProgress {
   0% {
-    transform: translateX(-110%);
+    transform: translateX(-100%);
   }
   100% {
     transform: translateX(320%);
@@ -33,5 +79,13 @@ body {
 }
 
 .animate-global-progress {
-  animation: globalProgress 1.1s linear infinite;
+  animation: globalProgress 1.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -17,28 +17,25 @@ const Modal = ({
     md: 'max-w-lg',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
-    full: 'max-w-full mx-4'
+    full: 'max-w-6xl'
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
+    <div className="fixed inset-0 z-[100] overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center px-4 py-10">
         <div 
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          className="fixed inset-0 bg-slate-950/55 backdrop-blur-[2px] transition-opacity"
           onClick={onClose}
         />
 
-        {/* Modal panel */}
-        <div className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizeClasses[size]} w-full`}>
-          {/* Header */}
-          <div className="bg-white px-4 py-3 border-b border-gray-200 sm:px-6">
+        <div className={`relative w-full ${sizeClasses[size]} overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl`}>
+          <div className="border-b border-slate-200 px-4 py-3 sm:px-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+              <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
               {showCloseButton && (
                 <button
                   type="button"
-                  className="text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   onClick={onClose}
                 >
                   <XMarkIcon className="h-5 w-5" />
@@ -47,8 +44,7 @@ const Modal = ({
             </div>
           </div>
 
-          {/* Body */}
-          <div className="bg-white px-4 py-4 sm:p-6">
+          <div className="max-h-[70vh] overflow-y-auto px-4 py-4 sm:p-6">
             {children}
           </div>
         </div>
@@ -69,29 +65,29 @@ export const ConfirmModal = ({
 }) => {
   const typeClasses = {
     danger: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
-    warning: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500',
-    success: 'bg-green-600 hover:bg-green-700 focus:ring-green-500',
-    primary: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500'
+    warning: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500',
+    success: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500',
+    primary: 'bg-blue-700 hover:bg-blue-800 focus:ring-blue-500'
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
       <div className="text-center">
         <div className="mt-2">
-          <p className="text-sm text-gray-500">{message}</p>
+          <p className="text-sm text-slate-500">{message}</p>
         </div>
 
         <div className="mt-6 flex gap-3 justify-center">
           <button
             type="button"
-            className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+            className="admin-btn-secondary"
             onClick={onClose}
           >
             {cancelText}
           </button>
           <button
             type="button"
-            className={`inline-flex justify-center px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${typeClasses[type]}`}
+            className={`inline-flex justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${typeClasses[type]}`}
             onClick={onConfirm}
           >
             {confirmText}

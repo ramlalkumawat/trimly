@@ -1,98 +1,151 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import {
+  ArrowLeftOnRectangleIcon,
+  Bars3BottomLeftIcon,
+  ChartBarSquareIcon,
+  ChartPieIcon,
+  Cog6ToothIcon,
+  CreditCardIcon,
+  HomeModernIcon,
+  ScissorsIcon,
+  UserCircleIcon,
+  UserGroupIcon,
+  UsersIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import { useAuth } from '../context/AuthContext';
 
-// Left navigation menu for admin sections (desktop + mobile drawer behavior).
-export default function Sidebar({ isOpen, toggleSidebar }) {
-  const links = [
-    { to: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { to: '/users', label: 'Users', icon: '👥' },
-    { to: '/providers', label: 'Providers', icon: '👨‍💼' },
-    { to: '/services', label: 'Services', icon: '🔧' },
-    { to: '/bookings', label: 'Bookings', icon: '📅' },
-    { to: '/payments', label: 'Payments', icon: '💳' },
-    { to: '/commissions', label: 'Commissions', icon: '💰' },
-    { to: '/analytics', label: 'Analytics', icon: '📈' },
-    { to: '/profile', label: 'Profile', icon: '👤' }
-  ];
+const links = [
+  { to: '/dashboard', label: 'Dashboard', Icon: HomeModernIcon },
+  { to: '/users', label: 'Users', Icon: UsersIcon },
+  { to: '/providers', label: 'Providers', Icon: UserGroupIcon },
+  { to: '/services', label: 'Services', Icon: ScissorsIcon },
+  { to: '/bookings', label: 'Bookings', Icon: ChartBarSquareIcon },
+  { to: '/payments', label: 'Payments', Icon: CreditCardIcon },
+  { to: '/commissions', label: 'Commissions', Icon: ChartPieIcon },
+  { to: '/analytics', label: 'Analytics', Icon: ChartBarSquareIcon },
+  { to: '/settings', label: 'Settings', Icon: Cog6ToothIcon },
+  { to: '/profile', label: 'Profile', Icon: UserCircleIcon },
+];
+
+// Collapsible admin sidebar with route highlighting and built-in logout action.
+export default function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }) {
+  const { logout, user } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleNavClick = () => {
+    if (window.innerWidth < 1024) {
+      onClose?.();
+    }
+  };
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+      onClose?.();
+    }
+  };
 
   return (
     <>
-      {/* Mobile Overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
-          onClick={toggleSidebar}
+      {isOpen ? (
+        <button
+          type="button"
+          aria-label="Close sidebar overlay"
+          onClick={onClose}
+          className="fixed inset-0 z-30 bg-slate-950/50 backdrop-blur-[2px] lg:hidden"
         />
-      )}
-      
-      {/* Sidebar */}
+      ) : null}
+
       <aside
-        className={`fixed top-0 left-0 h-full bg-white shadow-lg z-30 transform transition-transform duration-300 ease-in-out md:translate-x-0 w-64 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={[
+          'fixed inset-y-0 left-0 z-40 flex h-screen flex-col border-r border-slate-800/70 bg-slate-950 text-slate-200',
+          'transition-[width,transform] duration-300 ease-out',
+          'w-72 lg:translate-x-0',
+          isCollapsed ? 'lg:w-24' : 'lg:w-72',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+        ].join(' ')}
       >
-        <div className="p-4 sm:p-6 h-full flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-800">Admin Panel</h2>
-            <button 
-              onClick={toggleSidebar}
-              className="md:hidden text-gray-500 hover:text-gray-700 p-1"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div className="flex h-16 items-center justify-between border-b border-slate-800/80 px-4">
+          <div className={`flex items-center gap-3 ${isCollapsed ? 'lg:justify-center lg:w-full' : ''}`}>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-500 shadow-lg shadow-indigo-900/40">
+              <ScissorsIcon className="h-5 w-5 text-white" />
+            </div>
+            <div className={isCollapsed ? 'lg:hidden' : ''}>
+              <p className="text-sm font-semibold text-white">Trimly Admin</p>
+              <p className="text-xs text-slate-400">Control Center</p>
+            </div>
           </div>
-          
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1">
-            {links.map((link) => (
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white lg:hidden"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 py-4">
+          <nav className="space-y-1.5">
+            {links.map(({ to, label, Icon }) => (
               <NavLink
-                key={link.to}
-                to={link.to}
+                key={to}
+                to={to}
+                title={isCollapsed ? label : undefined}
+                onClick={handleNavClick}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 py-2.5 px-3 sm:px-4 rounded-lg transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-blue-50 text-blue-600 font-medium border-l-4 border-blue-600' 
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`
+                  [
+                    'group flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                    isCollapsed ? 'lg:justify-center lg:px-2' : '',
+                    isActive
+                      ? 'bg-gradient-to-r from-indigo-500/30 to-blue-500/20 text-white shadow-inner shadow-indigo-900/30'
+                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white',
+                  ].join(' ')
                 }
-                onClick={() => {
-                  if (window.innerWidth < 768) {
-                    toggleSidebar();
-                  }
-                }}
               >
-                <span className="text-lg">{link.icon}</span>
-                <span className="text-sm sm:text-base">{link.label}</span>
+                <Icon className="h-5 w-5 shrink-0" />
+                <span className={`ml-3 ${isCollapsed ? 'lg:hidden' : ''}`}>{label}</span>
               </NavLink>
             ))}
           </nav>
-          
-          {/* Footer */}
-          <div className="pt-4 border-t border-gray-200 mt-auto">
-            <div className="text-xs text-gray-500 text-center space-y-1">
-              <div>{new Date().getFullYear()} Trimly Admin</div>
-              <div className="leading-relaxed">
-                Designed &amp; Developed by{' '}
-                <a
-                  href="https://www.instagram.com/_ramlal__kumawat/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative inline-block font-semibold tracking-wide transition-transform duration-300 hover:scale-[1.03]"
-                >
-                  <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
-                    Ramlal Kumawat
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="absolute -bottom-0.5 left-0 h-px w-0 bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300 group-hover:w-full"
-                  />
-                </a>
-              </div>
+        </div>
+
+        <div className="border-t border-slate-800/80 px-3 py-4">
+          <div className={`mb-3 flex items-center gap-3 rounded-xl bg-slate-900 px-3 py-2.5 ${isCollapsed ? 'lg:justify-center lg:px-2' : ''}`}>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-500/30 text-xs font-semibold text-indigo-100">
+              {(user?.name || 'AD').slice(0, 2).toUpperCase()}
+            </div>
+            <div className={isCollapsed ? 'lg:hidden' : ''}>
+              <p className="truncate text-sm font-medium text-white">{user?.name || 'Admin User'}</p>
+              <p className="truncate text-xs text-slate-400">{user?.email || 'admin@trimly.com'}</p>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className={`flex w-full items-center rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2.5 text-sm font-medium text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70 ${isCollapsed ? 'lg:justify-center lg:px-2' : ''}`}
+          >
+            <ArrowLeftOnRectangleIcon className="h-5 w-5 shrink-0" />
+            <span className={`ml-3 ${isCollapsed ? 'lg:hidden' : ''}`}>
+              {loggingOut ? 'Logging out...' : 'Logout'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className={`mt-3 hidden w-full items-center rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 lg:flex ${isCollapsed ? 'justify-center px-2' : 'justify-center'}`}
+          >
+            <Bars3BottomLeftIcon className="h-5 w-5 shrink-0" />
+            <span className={`ml-2 ${isCollapsed ? 'hidden' : ''}`}>Collapse</span>
+          </button>
         </div>
       </aside>
     </>

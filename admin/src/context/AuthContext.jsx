@@ -1,6 +1,7 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../utils/api';
+import { clearAuthSession, getStoredToken } from '../utils/auth';
 
 // Auth context for admin login/session state and route guarding helpers.
 export const AuthContext = createContext();
@@ -18,8 +19,8 @@ export const AuthProvider = ({ children }) => {
     const stored = localStorage.getItem('user');
     return stored ? JSON.parse(stored) : null;
   });
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
-  const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState(() => getStoredToken());
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -62,7 +63,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(usr));
       setToken(jwt);
       setUser(usr);
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || err.message);
       throw err;
@@ -71,29 +72,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
-      await adminAPI.auth.logout();
+      if (getStoredToken()) {
+        await adminAPI.auth.logout();
+      }
     } catch (error) {
-      console.error('Logout error:', error);
+      // Ignore logout API failures and clear local session regardless.
     } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearAuthSession();
       setToken(null);
       setUser(null);
-      navigate('/login');
+      setLoading(false);
+      navigate('/login', { replace: true });
     }
-  };
+  }, [navigate]);
 
   // Auto-logout on token expiration
   useEffect(() => {
     if (token && isTokenExpired(token)) {
       logout();
     }
-  }, [token]);
+  }, [token, logout]);
 
   // Refresh token periodically
   useEffect(() => {
+    if (!token) return undefined;
+
     const refreshTokenInterval = setInterval(async () => {
       if (token && !isTokenExpired(token)) {
         try {
@@ -108,24 +113,31 @@ export const AuthProvider = ({ children }) => {
     }, 15 * 60 * 1000); // Refresh every 15 minutes
 
     return () => clearInterval(refreshTokenInterval);
-  }, [token]);
+  }, [token, logout]);
+
+  useEffect(() => {
+    setLoading(false);
+  }, []);
 
   const isAuthenticated = !!token && !isTokenExpired(token);
 
+  const contextValue = useMemo(
+    () => ({
+      user,
+      token,
+      loading,
+      error,
+      login,
+      logout,
+      isAuthenticated,
+      isAdmin,
+      decodeToken,
+    }),
+    [user, token, loading, error, login, logout, isAuthenticated]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{ 
-        user, 
-        token, 
-        loading, 
-        error, 
-        login, 
-        logout, 
-        isAuthenticated, 
-        isAdmin,
-        decodeToken 
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

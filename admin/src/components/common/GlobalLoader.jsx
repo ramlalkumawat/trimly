@@ -19,12 +19,12 @@ export default function GlobalLoader() {
       aria-live="polite"
       aria-atomic="true"
     >
-      <div className="absolute top-0 inset-x-0 h-1 bg-black/5 overflow-hidden">
-        <div className="h-full w-1/3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 animate-global-progress" />
+      <div className="absolute inset-x-0 top-0 h-1 overflow-hidden bg-slate-200/50">
+        <div className="animate-global-progress h-full w-1/3 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500" />
       </div>
       <div className="absolute top-4 right-4">
-        <div className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 text-white rounded-full shadow-lg">
-          <ArrowPathIcon className="w-4 h-4 animate-spin" />
+        <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-2 text-white shadow-lg">
+          <ArrowPathIcon className="h-4 w-4 animate-spin" />
           <span className="text-xs font-medium">Syncing...</span>
         </div>
       </div>

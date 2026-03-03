@@ -31,6 +31,13 @@ const trustStats = [
   { label: 'Verified Pros', value: '500+' }
 ];
 
+const featuredCardStyles = [
+  'from-[#fffaf0] via-[#fff5e4] to-[#ffe9cf] border-amber-100',
+  'from-[#fff7f1] via-[#fff2eb] to-[#ffe5da] border-orange-100',
+  'from-[#f8fff7] via-[#f2fff0] to-[#e6f8df] border-lime-100',
+  'from-[#f4fbff] via-[#eef8ff] to-[#dff1ff] border-sky-100'
+];
+
 export default function Landing() {
   const nav = useNavigate();
 
@@ -67,7 +74,7 @@ export default function Landing() {
 
             <div className="grid grid-cols-3 gap-3 mt-8 max-w-md">
               {trustStats.map((item) => (
-                <div key={item.label} className="rounded-xl bg-white border border-gray-100 p-3 shadow-soft">
+                <div key={item.label} className="rounded-xl bg-gradient-to-br from-white to-amber-50/60 border border-amber-100/80 p-3 shadow-soft">
                   <div className="text-base sm:text-lg font-bold text-gray-900">{item.value}</div>
                   <div className="text-[11px] sm:text-xs text-gray-500">{item.label}</div>
                 </div>
@@ -108,9 +115,12 @@ export default function Landing() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-          {featuredServices.map((service) => (
-            <article key={service.title} className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-soft card-hover">
-              <div className="h-44 overflow-hidden">
+          {featuredServices.map((service, idx) => (
+            <article
+              key={service.title}
+              className={`bg-gradient-to-br ${featuredCardStyles[idx % featuredCardStyles.length]} rounded-2xl overflow-hidden shadow-soft card-hover`}
+            >
+              <div className="h-44 overflow-hidden border-b border-white/60">
                 <img
                   src={service.image}
                   alt={service.title}
@@ -120,7 +130,7 @@ export default function Landing() {
               </div>
               <div className="p-4">
                 <h3 className="font-semibold text-lg text-gray-900">{service.title}</h3>
-                <p className="mt-1 text-sm text-gray-600">{service.description}</p>
+                <p className="mt-1 text-sm text-gray-700">{service.description}</p>
               </div>
             </article>
           ))}

@@ -15,11 +15,13 @@ const {
 const { protect } = require('../middlewares/authMiddleware');
 const { onlyCustomer, onlyProvider, authorizeRoles } = require('../middlewares/roleMiddleware');
 const { checkBookingOwnership, checkBookingStatus } = require('../middlewares/ownershipMiddleware');
+const { handleValidation } = require('../middlewares/validationMiddleware');
+const { createBookingValidator } = require('../validators/bookingValidators');
 
 // Booking routes for customer creation, provider actions, and role-scoped listing/details.
 router.use(protect);
 
-router.post('/', onlyCustomer, createBooking);
+router.post('/', onlyCustomer, createBookingValidator, handleValidation, createBooking);
 router.get('/', getBookings);
 
 // Provider specific routes

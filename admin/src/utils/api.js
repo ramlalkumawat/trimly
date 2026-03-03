@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { beginRequest, endRequest } from './loadingBus';
+import { clearAuthSession, getStoredToken } from './auth';
 
 // Central API layer for admin domain endpoints (auth, users, services, etc.).
 const API_BASE_URL =
@@ -25,7 +26,7 @@ api.interceptors.request.use(
       config.__loaderTracked = true;
     }
 
-    const token = localStorage.getItem('token');
+    const token = getStoredToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -51,9 +52,10 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized - auto logout
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      clearAuthSession();
+      if (window.location.pathname !== '/login') {
+        window.location.replace('/login');
+      }
     }
     
     // Handle network errors
@@ -100,6 +102,7 @@ export const adminAPI = {
   bookings: {
     getAll: (params = {}) => api.get('/api/admin/bookings', { params }),
     getById: (id) => api.get(`/api/admin/bookings/${id}`),
+    create: (bookingData) => api.post('/api/admin/bookings', bookingData),
     update: (id, bookingData) => api.put(`/api/admin/bookings/${id}`, bookingData),
     delete: (id) => api.delete(`/api/admin/bookings/${id}`),
   },

@@ -17,6 +17,7 @@
 
 /* Set full-height for the app container */
 html,body,#root{height:100%;}
+html{scroll-behavior:smooth;}
 body{
   /* Apply the Tailwind background utility and primary text color */
   @apply bg-bg-default text-[var(--text-primary)] antialiased;
@@ -91,6 +92,10 @@ body{
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   .btn-primary,
   .card-hover,
   .section-fade,

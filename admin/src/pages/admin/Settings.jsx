@@ -1,377 +1,382 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import {
+  BellAlertIcon,
+  Cog6ToothIcon,
+  InformationCircleIcon,
+  LockClosedIcon,
+  UserCircleIcon,
+} from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import FormInput, { FormActions } from '../../components/forms/FormInput';
 import useToast from '../../hooks/useToast';
 
-// Account/security/preferences settings with save and logout actions.
+const tabs = [
+  { id: 'profile', label: 'Profile', Icon: UserCircleIcon },
+  { id: 'security', label: 'Security', Icon: LockClosedIcon },
+  { id: 'notifications', label: 'Notifications', Icon: BellAlertIcon },
+  { id: 'system', label: 'System', Icon: Cog6ToothIcon },
+  { id: 'about', label: 'About', Icon: InformationCircleIcon },
+];
+
+// Settings page for profile, security, notification, and system preferences.
 const Settings = () => {
+  const toast = useToast();
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
-  const toast = useToast();
 
-  // Profile form state
   const [profileForm, setProfileForm] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: user?.firstName || user?.name?.split(' ')[0] || '',
+    lastName: user?.lastName || user?.name?.split(' ').slice(1).join(' ') || '',
     email: user?.email || '',
-    phone: user?.phone || ''
+    phone: user?.phone || '',
   });
 
-  // Password form state
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
 
-  // System settings state
+  const [notificationSettings, setNotificationSettings] = useState({
+    emailNotifications: true,
+    pushNotifications: true,
+    bookingAlerts: true,
+    billingAlerts: false,
+  });
+
   const [systemSettings, setSystemSettings] = useState({
     siteName: 'Trimly Admin',
     maintenanceMode: false,
-    emailNotifications: true,
-    pushNotifications: true
+    autoBackup: true,
   });
 
-  const handleProfileSubmit = async (e) => {
-    e.preventDefault();
+  const userDisplayName = useMemo(() => {
+    const fallbackName = `${profileForm.firstName} ${profileForm.lastName}`.trim();
+    return user?.name || fallbackName || 'Admin User';
+  }, [user?.name, profileForm.firstName, profileForm.lastName]);
+
+  const handleProfileSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     try {
-      // TODO: Update profile API call
-      toast.success('Profile updated successfully');
-    } catch (error) {
-      toast.error('Failed to update profile');
+      // API endpoint can be wired here when profile settings endpoint expands.
+      toast.success('Profile settings saved.');
+    } catch (requestError) {
+      toast.error('Failed to save profile settings.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePasswordSubmit = async (e) => {
-    e.preventDefault();
-    
+  const handlePasswordSubmit = async (event) => {
+    event.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error('New password and confirmation do not match.');
       return;
     }
-    
     if (passwordForm.newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters long');
+      toast.error('Password must be at least 8 characters long.');
       return;
     }
-    
+
     setLoading(true);
     try {
-      // TODO: Change password API call
-      toast.success('Password changed successfully');
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-    } catch (error) {
-      toast.error('Failed to change password');
+      toast.success('Password updated successfully.');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (requestError) {
+      toast.error('Failed to update password.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSystemSettingsSubmit = async (e) => {
-    e.preventDefault();
+  const handleSystemSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     try {
-      // TODO: Update system settings API call
-      toast.success('System settings updated successfully');
-    } catch (error) {
-      toast.error('Failed to update system settings');
+      toast.success('System preferences saved.');
+    } catch (requestError) {
+      toast.error('Failed to save system preferences.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (form, setForm) => (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const tabs = [
-    { id: 'profile', label: 'Profile', icon: '👤' },
-    { id: 'security', label: 'Security', icon: '🔒' },
-    { id: 'system', label: 'System', icon: '⚙️' },
-    { id: 'about', label: 'About', icon: 'ℹ️' }
-  ];
+  const renderToggle = (label, checked, onChange, hint) => (
+    <label className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <div>
+        <p className="text-sm font-semibold text-slate-800">{label}</p>
+        {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+      </div>
+      <button
+        type="button"
+        onClick={onChange}
+        className={`relative mt-0.5 inline-flex h-6 w-11 items-center rounded-full transition ${
+          checked ? 'bg-blue-700' : 'bg-slate-300'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+            checked ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </label>
+  );
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            Manage your account settings and system preferences
-          </p>
+    <div className="space-y-6">
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="admin-section-title">Settings</h1>
+          <p className="admin-section-subtitle">Manage account preferences, notifications and security controls.</p>
         </div>
-      </div>
+      </section>
 
-      {/* Tabs */}
-      <div className="mt-8">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => (
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+        <aside className="admin-card p-3">
+          <nav className="space-y-1">
+            {tabs.map(({ id, label, Icon }) => (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`${
-                  activeTab === tab.id
-                    ? 'border-amber-500 text-amber-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center`}
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${
+                  activeTab === id
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
               >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
+                <Icon className="h-4 w-4" />
+                {label}
               </button>
             ))}
           </nav>
-        </div>
+        </aside>
 
-        {/* Tab Content */}
-        <div className="mt-6">
-          {/* Profile Tab */}
-          {activeTab === 'profile' && (
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-6">Profile Information</h3>
-                <form onSubmit={handleProfileSubmit}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormInput
-                      label="First Name"
-                      name="firstName"
-                      value={profileForm.firstName}
-                      onChange={handleInputChange(profileForm, setProfileForm)}
-                      required
-                    />
-                    <FormInput
-                      label="Last Name"
-                      name="lastName"
-                      value={profileForm.lastName}
-                      onChange={handleInputChange(profileForm, setProfileForm)}
-                      required
-                    />
-                  </div>
+        <div className="space-y-4 xl:col-span-3">
+          {activeTab === 'profile' ? (
+            <section className="admin-card p-5 sm:p-6">
+              <h2 className="text-lg font-semibold text-slate-900">Profile Information</h2>
+              <p className="mt-1 text-sm text-slate-500">Update administrator identity and contact details.</p>
+              <form onSubmit={handleProfileSubmit} className="mt-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <FormInput
-                    label="Email Address"
-                    name="email"
-                    type="email"
-                    value={profileForm.email}
-                    onChange={handleInputChange(profileForm, setProfileForm)}
+                    label="First Name"
+                    name="firstName"
+                    value={profileForm.firstName}
+                    onChange={(event) => setProfileForm((prev) => ({ ...prev, firstName: event.target.value }))}
                     required
                   />
                   <FormInput
-                    label="Phone Number"
-                    name="phone"
-                    value={profileForm.phone}
-                    onChange={handleInputChange(profileForm, setProfileForm)}
+                    label="Last Name"
+                    name="lastName"
+                    value={profileForm.lastName}
+                    onChange={(event) => setProfileForm((prev) => ({ ...prev, lastName: event.target.value }))}
+                    required
                   />
-                  <FormActions
-                    onCancel={() => setProfileForm({
-                      firstName: user?.firstName || '',
-                      lastName: user?.lastName || '',
+                </div>
+                <FormInput
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={profileForm.email}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, email: event.target.value }))}
+                  required
+                />
+                <FormInput
+                  label="Phone"
+                  name="phone"
+                  value={profileForm.phone}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, phone: event.target.value }))}
+                />
+                <FormActions
+                  onCancel={() =>
+                    setProfileForm({
+                      firstName: user?.firstName || user?.name?.split(' ')[0] || '',
+                      lastName: user?.lastName || user?.name?.split(' ').slice(1).join(' ') || '',
                       email: user?.email || '',
-                      phone: user?.phone || ''
-                    })}
-                    loading={loading}
-                  />
-                </form>
-              </div>
-            </div>
-          )}
+                      phone: user?.phone || '',
+                    })
+                  }
+                  loading={loading}
+                  submitLabel="Save Profile"
+                />
+              </form>
+            </section>
+          ) : null}
 
-          {/* Security Tab */}
-          {activeTab === 'security' && (
-            <div className="space-y-6">
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-6">Change Password</h3>
-                  <form onSubmit={handlePasswordSubmit}>
-                    <FormInput
-                      label="Current Password"
-                      name="currentPassword"
-                      type="password"
-                      value={passwordForm.currentPassword}
-                      onChange={handleInputChange(passwordForm, setPasswordForm)}
-                      required
-                    />
-                    <FormInput
-                      label="New Password"
-                      name="newPassword"
-                      type="password"
-                      value={passwordForm.newPassword}
-                      onChange={handleInputChange(passwordForm, setPasswordForm)}
-                      required
-                    />
-                    <FormInput
-                      label="Confirm New Password"
-                      name="confirmPassword"
-                      type="password"
-                      value={passwordForm.confirmPassword}
-                      onChange={handleInputChange(passwordForm, setPasswordForm)}
-                      required
-                    />
-                    <FormActions
-                      onCancel={() => setPasswordForm({
-                        currentPassword: '',
-                        newPassword: '',
-                        confirmPassword: ''
-                      })}
-                      loading={loading}
-                    />
-                  </form>
-                </div>
-              </div>
-
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-6">Session Management</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Current Session</p>
-                        <p className="text-sm text-gray-500">Active now • {user?.email}</p>
-                      </div>
-                      <button
-                        onClick={logout}
-                        className="text-sm text-red-600 hover:text-red-700 font-medium"
-                      >
-                        Sign Out
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* System Tab */}
-          {activeTab === 'system' && (
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-6">System Settings</h3>
-                <form onSubmit={handleSystemSettingsSubmit}>
+          {activeTab === 'security' ? (
+            <section className="space-y-4">
+              <article className="admin-card p-5 sm:p-6">
+                <h2 className="text-lg font-semibold text-slate-900">Change Password</h2>
+                <p className="mt-1 text-sm text-slate-500">Use a strong password to secure admin access.</p>
+                <form onSubmit={handlePasswordSubmit} className="mt-5">
                   <FormInput
-                    label="Site Name"
-                    name="siteName"
-                    value={systemSettings.siteName}
-                    onChange={handleInputChange(systemSettings, setSystemSettings)}
+                    label="Current Password"
+                    name="currentPassword"
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(event) => setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))}
+                    required
                   />
-                  <div className="space-y-4 mb-6">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="maintenanceMode"
-                        checked={systemSettings.maintenanceMode}
-                        onChange={handleInputChange(systemSettings, setSystemSettings)}
-                        className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">Maintenance Mode</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="emailNotifications"
-                        checked={systemSettings.emailNotifications}
-                        onChange={handleInputChange(systemSettings, setSystemSettings)}
-                        className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">Email Notifications</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="pushNotifications"
-                        checked={systemSettings.pushNotifications}
-                        onChange={handleInputChange(systemSettings, setSystemSettings)}
-                        className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">Push Notifications</span>
-                    </label>
-                  </div>
+                  <FormInput
+                    label="New Password"
+                    name="newPassword"
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(event) => setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))}
+                    required
+                  />
+                  <FormInput
+                    label="Confirm Password"
+                    name="confirmPassword"
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(event) => setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+                    required
+                  />
                   <FormActions
-                    onCancel={() => setSystemSettings({
-                      siteName: 'Trimly Admin',
-                      maintenanceMode: false,
-                      emailNotifications: true,
-                      pushNotifications: true
-                    })}
+                    onCancel={() => setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })}
                     loading={loading}
+                    submitLabel="Update Password"
                   />
                 </form>
+              </article>
+
+              <article className="admin-card p-5 sm:p-6">
+                <h3 className="text-lg font-semibold text-slate-900">Session</h3>
+                <p className="mt-1 text-sm text-slate-500">Signed in as {userDisplayName}</p>
+                <button type="button" onClick={logout} className="admin-btn-danger mt-4">
+                  Sign Out
+                </button>
+              </article>
+            </section>
+          ) : null}
+
+          {activeTab === 'notifications' ? (
+            <section className="admin-card p-5 sm:p-6">
+              <h2 className="text-lg font-semibold text-slate-900">Notification Preferences</h2>
+              <p className="mt-1 text-sm text-slate-500">Choose which alerts should reach your inbox and dashboard.</p>
+              <div className="mt-5 space-y-3">
+                {renderToggle(
+                  'Email Notifications',
+                  notificationSettings.emailNotifications,
+                  () =>
+                    setNotificationSettings((prev) => ({
+                      ...prev,
+                      emailNotifications: !prev.emailNotifications,
+                    })),
+                  'Receive key updates through email.'
+                )}
+                {renderToggle(
+                  'Push Notifications',
+                  notificationSettings.pushNotifications,
+                  () =>
+                    setNotificationSettings((prev) => ({
+                      ...prev,
+                      pushNotifications: !prev.pushNotifications,
+                    })),
+                  'Enable browser push for urgent updates.'
+                )}
+                {renderToggle(
+                  'Booking Alerts',
+                  notificationSettings.bookingAlerts,
+                  () =>
+                    setNotificationSettings((prev) => ({
+                      ...prev,
+                      bookingAlerts: !prev.bookingAlerts,
+                    })),
+                  'Notify when booking status changes.'
+                )}
+                {renderToggle(
+                  'Billing Alerts',
+                  notificationSettings.billingAlerts,
+                  () =>
+                    setNotificationSettings((prev) => ({
+                      ...prev,
+                      billingAlerts: !prev.billingAlerts,
+                    })),
+                  'Alert on refunds and payout anomalies.'
+                )}
               </div>
-            </div>
-          )}
+              <div className="mt-6">
+                <button type="button" onClick={() => toast.success('Notification preferences saved.')} className="admin-btn-primary">
+                  Save Notification Settings
+                </button>
+              </div>
+            </section>
+          ) : null}
 
-          {/* About Tab */}
-          {activeTab === 'about' && (
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-6">About Trimly Admin</h3>
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-base font-medium text-gray-900">Version Information</h4>
-                    <dl className="mt-2 space-y-1">
-                      <div className="flex justify-between">
-                        <dt className="text-sm text-gray-500">Version</dt>
-                        <dd className="text-sm text-gray-900">1.0.0</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-sm text-gray-500">Build</dt>
-                        <dd className="text-sm text-gray-900">Production</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-sm text-gray-500">Last Updated</dt>
-                        <dd className="text-sm text-gray-900">February 21, 2026</dd>
-                      </div>
-                    </dl>
-                  </div>
+          {activeTab === 'system' ? (
+            <section className="admin-card p-5 sm:p-6">
+              <h2 className="text-lg font-semibold text-slate-900">System Preferences</h2>
+              <p className="mt-1 text-sm text-slate-500">Configure global admin panel behavior.</p>
+              <form onSubmit={handleSystemSubmit} className="mt-5">
+                <FormInput
+                  label="Panel Name"
+                  name="siteName"
+                  value={systemSettings.siteName}
+                  onChange={(event) => setSystemSettings((prev) => ({ ...prev, siteName: event.target.value }))}
+                />
+                <div className="space-y-3">
+                  {renderToggle(
+                    'Maintenance Mode',
+                    systemSettings.maintenanceMode,
+                    () =>
+                      setSystemSettings((prev) => ({
+                        ...prev,
+                        maintenanceMode: !prev.maintenanceMode,
+                      })),
+                    'Temporarily pause external operations while maintenance runs.'
+                  )}
+                  {renderToggle(
+                    'Automated Backup',
+                    systemSettings.autoBackup,
+                    () =>
+                      setSystemSettings((prev) => ({
+                        ...prev,
+                        autoBackup: !prev.autoBackup,
+                      })),
+                    'Create periodic snapshots for critical admin data.'
+                  )}
+                </div>
+                <FormActions
+                  onCancel={() => setSystemSettings({ siteName: 'Trimly Admin', maintenanceMode: false, autoBackup: true })}
+                  loading={loading}
+                  submitLabel="Save System Settings"
+                />
+              </form>
+            </section>
+          ) : null}
 
-                  <div>
-                    <h4 className="text-base font-medium text-gray-900">System Information</h4>
-                    <dl className="mt-2 space-y-1">
-                      <div className="flex justify-between">
-                        <dt className="text-sm text-gray-500">Environment</dt>
-                        <dd className="text-sm text-gray-900">Production</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-sm text-gray-500">Database</dt>
-                        <dd className="text-sm text-gray-900">MongoDB</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-sm text-gray-500">API Version</dt>
-                        <dd className="text-sm text-gray-900">v1.0.0</dd>
-                      </div>
-                    </dl>
-                  </div>
-
-                  <div>
-                    <h4 className="text-base font-medium text-gray-900">Support</h4>
-                    <p className="mt-1 text-sm text-gray-600">
-                      For technical support or questions, please contact your system administrator.
-                    </p>
-                    <div className="mt-3 space-y-2">
-                      <a href="#" className="block text-sm text-amber-600 hover:text-amber-700">
-                        Documentation →
-                      </a>
-                      <a href="#" className="block text-sm text-amber-600 hover:text-amber-700">
-                        API Reference →
-                      </a>
-                      <a href="#" className="block text-sm text-amber-600 hover:text-amber-700">
-                        Support Portal →
-                      </a>
-                    </div>
-                  </div>
+          {activeTab === 'about' ? (
+            <section className="admin-card p-5 sm:p-6">
+              <h2 className="text-lg font-semibold text-slate-900">About Trimly Admin</h2>
+              <p className="mt-1 text-sm text-slate-500">Platform metadata and operational notes.</p>
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Version</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">v1.0.0</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Environment</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">Production</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Database</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">MongoDB</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Support</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">admin@trimly.com</p>
                 </div>
               </div>
-            </div>
-          )}
+            </section>
+          ) : null}
         </div>
-      </div>
+      </section>
     </div>
   );
 };

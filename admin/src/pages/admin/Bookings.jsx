@@ -1,85 +1,81 @@
-import React, { useState, useEffect } from 'react';
-import { EyeIcon, CheckIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useState } from 'react';
+import {
+  CheckIcon,
+  EyeIcon,
+  PencilSquareIcon,
+  PlusIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import DataTable from '../../components/tables/DataTable';
-import Modal from '../../components/modals/Modal';
+import Modal, { ConfirmModal } from '../../components/modals/Modal';
 import FormInput, { FormActions } from '../../components/forms/FormInput';
-import { ConfirmModal } from '../../components/modals/Modal';
 import { adminAPI } from '../../utils/api';
 import useToast from '../../hooks/useToast';
-import { TableSkeleton } from '../../components/layout/LoadingSkeleton';
 
-// Bookings operations page: list, view details, update status, and create manual entries.
+const initialCreateForm = {
+  user: '',
+  provider: '',
+  service: '',
+  date: new Date().toISOString().slice(0, 10),
+  time: '10:00',
+  address: '',
+  notes: '',
+};
+
+const statusOptions = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'accepted', label: 'Accepted' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'rejected', label: 'Rejected' },
+];
+
+const statusClassMap = {
+  pending: 'bg-amber-100 text-amber-700',
+  accepted: 'bg-blue-100 text-blue-700',
+  in_progress: 'bg-indigo-100 text-indigo-700',
+  completed: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-red-100 text-red-700',
+  rejected: 'bg-red-100 text-red-700',
+};
+
+// Booking operations page for searching, editing, creating and reviewing booking records.
 const Bookings = () => {
+  const toast = useToast();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
     total: 0,
-    totalPages: 0
+    totalPages: 0,
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDateRange, setFilterDateRange] = useState({ start: '', end: '' });
 
-  // Modal states
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState(null);
-
-  // Form states
-  const [formData, setFormData] = useState({
-    status: '',
-    notes: ''
-  });
-  const [createFormData, setCreateFormData] = useState({
-    user: '',
-    provider: '',
-    service: '',
-    date: new Date().toISOString().slice(0, 10),
-    time: '10:00',
-    address: '',
-    notes: ''
-  });
   const [users, setUsers] = useState([]);
   const [providers, setProviders] = useState([]);
   const [services, setServices] = useState([]);
+
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+
+  const [formData, setFormData] = useState({ status: '', notes: '' });
+  const [createFormData, setCreateFormData] = useState(initialCreateForm);
   const [formLoading, setFormLoading] = useState(false);
 
-  const toast = useToast();
-
-  // Fetch users, providers, services for create booking
-  const fetchOptions = async () => {
-    try {
-      const [uRes, pRes, sRes] = await Promise.all([
-        adminAPI.users.getAll({ limit: 100 }),
-        adminAPI.providers.getAll({ limit: 100 }),
-        adminAPI.services.getAll({ limit: 100 })
-      ]);
-      setUsers(uRes.data.data.users);
-      setProviders(pRes.data.data.providers);
-      setServices(sRes.data.data.services);
-    } catch (err) {
-      console.error('Failed to fetch options', err);
-    }
-  };
-
-  useEffect(() => {
-    if (showCreateModal) {
-      fetchOptions();
-    }
-  }, [showCreateModal]);
-
-  // Fetch bookings
   const fetchBookings = async () => {
     setLoading(true);
-    setError(null);
+    setError('');
     try {
-      const params = {
+      const response = await adminAPI.bookings.getAll({
         page: pagination.page,
         limit: pagination.limit,
         search: searchTerm,
@@ -87,20 +83,35 @@ const Bookings = () => {
         sortOrder: sortConfig.direction,
         status: filterStatus,
         startDate: filterDateRange.start,
-        endDate: filterDateRange.end
-      };
-      
-      const response = await adminAPI.bookings.getAll(params);
-      setBookings(response.data.data.bookings);
-      setPagination(prev => ({
+        endDate: filterDateRange.end,
+      });
+
+      setBookings(response?.data?.data?.bookings || []);
+      setPagination((prev) => ({
         ...prev,
-        ...response.data.data.pagination
+        ...(response?.data?.data?.pagination || {}),
       }));
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch bookings');
-      toast.error('Failed to fetch bookings');
+    } catch (requestError) {
+      const message = requestError?.response?.data?.message || 'Failed to fetch bookings.';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCreateOptions = async () => {
+    try {
+      const [usersResponse, providersResponse, servicesResponse] = await Promise.all([
+        adminAPI.users.getAll({ page: 1, limit: 100 }),
+        adminAPI.providers.getAll({ page: 1, limit: 100 }),
+        adminAPI.services.getAll({ page: 1, limit: 100, status: 'active' }),
+      ]);
+      setUsers(usersResponse?.data?.data?.users || []);
+      setProviders(providersResponse?.data?.data?.providers || []);
+      setServices(servicesResponse?.data?.data?.services || []);
+    } catch (requestError) {
+      toast.error(requestError?.response?.data?.message || 'Failed to load booking form options.');
     }
   };
 
@@ -108,82 +119,77 @@ const Bookings = () => {
     fetchBookings();
   }, [pagination.page, pagination.limit, searchTerm, sortConfig, filterStatus, filterDateRange]);
 
-  // Form handlers
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  useEffect(() => {
+    if (showCreateModal) {
+      fetchCreateOptions();
+    }
+  }, [showCreateModal]);
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCreateInputChange = (e) => {
-    const { name, value } = e.target;
-    setCreateFormData(prev => ({ ...prev, [name]: value }));
+  const handleCreateInputChange = (event) => {
+    const { name, value } = event.target;
+    setCreateFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // CRUD operations
-  const handleCreateBooking = async (e) => {
-    e.preventDefault();
+  const handleCreateBooking = async (event) => {
+    event.preventDefault();
     setFormLoading(true);
     try {
       await adminAPI.bookings.create(createFormData);
-      toast.success('Booking created successfully');
+      toast.success('Booking created successfully.');
       setShowCreateModal(false);
-      setCreateFormData({
-        user: '',
-        provider: '',
-        service: '',
-        date: new Date().toISOString().slice(0, 10),
-        time: '10:00',
-        address: '',
-        notes: ''
-      });
+      setCreateFormData(initialCreateForm);
       fetchBookings();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create booking');
+    } catch (requestError) {
+      toast.error(requestError?.response?.data?.message || 'Failed to create booking.');
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleUpdateBooking = async (e) => {
-    e.preventDefault();
-    
+  const handleUpdateBooking = async (event) => {
+    event.preventDefault();
     setFormLoading(true);
     try {
       await adminAPI.bookings.update(selectedBooking._id, formData);
-      toast.success('Booking updated successfully');
+      toast.success('Booking updated successfully.');
       setShowEditModal(false);
-      setShowStatusModal(false);
       setFormData({ status: '', notes: '' });
       fetchBookings();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update booking');
+    } catch (requestError) {
+      toast.error(requestError?.response?.data?.message || 'Failed to update booking.');
     } finally {
       setFormLoading(false);
     }
   };
 
   const handleDeleteBooking = async () => {
+    if (!selectedBooking?._id) return;
     try {
       await adminAPI.bookings.delete(selectedBooking._id);
-      toast.success('Booking deleted successfully');
+      toast.success('Booking deleted successfully.');
+      setShowDeleteModal(false);
       setSelectedBooking(null);
       fetchBookings();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete booking');
+    } catch (requestError) {
+      toast.error(requestError?.response?.data?.message || 'Failed to delete booking.');
     }
   };
 
-  const handleUpdateStatus = async (booking, newStatus) => {
+  const handleQuickAccept = async (booking) => {
     try {
-      await adminAPI.bookings.update(booking._id, { status: newStatus });
-      toast.success(`Booking ${newStatus} successfully`);
+      await adminAPI.bookings.update(booking._id, { status: 'accepted' });
+      toast.success('Booking accepted.');
       fetchBookings();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update status');
+    } catch (requestError) {
+      toast.error(requestError?.response?.data?.message || 'Failed to update booking status.');
     }
   };
 
-  // Modal handlers
   const openViewModal = (booking) => {
     setSelectedBooking(booking);
     setShowViewModal(true);
@@ -192,474 +198,330 @@ const Bookings = () => {
   const openEditModal = (booking) => {
     setSelectedBooking(booking);
     setFormData({
-      status: booking.status,
-      notes: booking.notes || ''
+      status: booking.status || 'pending',
+      notes: booking.notes || '',
     });
     setShowEditModal(true);
   };
 
-  const openStatusModal = (booking, status) => {
+  const openDeleteModal = (booking) => {
     setSelectedBooking(booking);
-    setFormData({
-      status: status,
-      notes: booking.notes || ''
-    });
-    setShowStatusModal(true);
+    setShowDeleteModal(true);
   };
 
-  const openDeleteModal = () => {
-    if (window.confirm('Are you sure you want to delete this booking?')) {
-      handleDeleteBooking();
-    }
-  };
-
-  // Filter options
-  const filterOptions = [
+  const filters = [
     {
       key: 'status',
       value: filterStatus,
-      placeholder: 'All Status',
-      options: [
-        { value: '', label: 'All Status' },
-        { value: 'pending', label: 'Pending' },
-        { value: 'accepted', label: 'Accepted' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'completed', label: 'Completed' },
-        { value: 'cancelled', label: 'Cancelled' },
-        { value: 'rejected', label: 'Rejected' }
-      ]
-    }
+      options: [{ value: '', label: 'All Status' }, ...statusOptions],
+    },
   ];
 
-  // Status options
-  const statusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'accepted', label: 'Accepted' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' },
-    { value: 'rejected', label: 'Rejected' }
-  ];
-
-  // Table columns
   const columns = [
     {
       key: 'bookingId',
       title: 'Booking ID',
       sortable: true,
-      render: (value) => (
-        <span className="font-mono text-sm">#{value}</span>
-      )
+      render: (value) => <span className="font-mono text-xs text-slate-700">#{value || '--'}</span>,
     },
     {
       key: 'user',
       title: 'Customer',
       sortable: true,
-      render: (value, row) => (
-        <div>
-          <div className="font-medium text-gray-900">
-            {row.user?.firstName} {row.user?.lastName}
-          </div>
-          <div className="text-sm text-gray-500">{row.user?.email}</div>
+      render: (_, row) => (
+        <div className="min-w-[160px]">
+          <p className="font-semibold text-slate-900">
+            {`${row.user?.firstName || ''} ${row.user?.lastName || ''}`.trim() || 'Customer'}
+          </p>
+          <p className="text-xs text-slate-500">{row.user?.email || row.user?.phone || '--'}</p>
         </div>
-      )
+      ),
     },
     {
       key: 'provider',
       title: 'Provider',
       sortable: true,
-      render: (value, row) => (
-        <div>
-          <div className="font-medium text-gray-900">
-            {row.provider?.businessName}
-          </div>
-          <div className="text-sm text-gray-500">
-            {row.provider?.firstName} {row.provider?.lastName}
-          </div>
+      render: (_, row) => (
+        <div className="min-w-[160px]">
+          <p className="font-semibold text-slate-900">{row.provider?.businessName || 'Unassigned'}</p>
+          <p className="text-xs text-slate-500">
+            {`${row.provider?.firstName || ''} ${row.provider?.lastName || ''}`.trim()}
+          </p>
         </div>
-      )
+      ),
     },
     {
       key: 'service',
       title: 'Service',
       sortable: true,
-      render: (value, row) => (
+      render: (_, row) => (
         <div>
-          <div className="font-medium text-gray-900">{row.service?.name}</div>
-          <div className="text-sm text-gray-500">₹{row.service?.price}</div>
+          <p className="font-semibold text-slate-900">{row.service?.name || '--'}</p>
+          <p className="text-xs text-slate-500">₹{Number(row.service?.price || 0).toFixed(0)}</p>
         </div>
-      )
+      ),
     },
     {
       key: 'scheduledDate',
       title: 'Scheduled',
       sortable: true,
-      render: (value, row) => (
+      render: (value) => (
         <div>
-          <div className="font-medium text-gray-900">
-            {new Date(value).toLocaleDateString()}
-          </div>
-          <div className="text-sm text-gray-500">
-            {new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
+          <p className="text-sm font-medium text-slate-800">
+            {value ? new Date(value).toLocaleDateString('en-IN') : '--'}
+          </p>
+          <p className="text-xs text-slate-500">
+            {value
+              ? new Date(value).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+              : '--'}
+          </p>
         </div>
-      )
+      ),
     },
     {
       key: 'status',
       title: 'Status',
       sortable: true,
-      render: (value) => {
-        const statusConfig = {
-          pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
-          accepted: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Accepted' },
-          in_progress: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'In Progress' },
-          completed: { bg: 'bg-green-100', text: 'text-green-800', label: 'Completed' },
-          cancelled: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelled' },
-          rejected: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rejected' }
-        };
-        
-        const config = statusConfig[value] || statusConfig.pending;
-        
-        return (
-          <span className={`px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.text}`}>
-            {config.label}
-          </span>
-        );
-      }
+      render: (value) => (
+        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassMap[value] || statusClassMap.pending}`}>
+          {String(value || 'pending').replace('_', ' ')}
+        </span>
+      ),
     },
     {
       key: 'totalAmount',
       title: 'Amount',
       sortable: true,
-      render: (value) => `₹${value.toFixed(2)}`
-    },
-    {
-      key: 'commissionAmount',
-      title: 'Commission',
-      sortable: true,
-      render: (value) => `₹${(value || 0).toFixed(2)}`
-    },
-    {
-      key: 'createdAt',
-      title: 'Booked',
-      sortable: true,
-      render: (value) => new Date(value).toLocaleDateString()
+      render: (value) => `₹${Number(value || 0).toFixed(2)}`,
     },
     {
       key: 'actions',
       title: 'Actions',
-      render: (value, row) => (
-        <div className="flex items-center space-x-2">
+      render: (_, row) => (
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
+            type="button"
             onClick={() => openViewModal(row)}
-            className="text-gray-400 hover:text-gray-600"
-            title="View Details"
+            className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50"
+            title="View"
           >
             <EyeIcon className="h-4 w-4" />
           </button>
           <button
+            type="button"
             onClick={() => openEditModal(row)}
-            className="text-amber-600 hover:text-amber-700"
+            className="rounded-lg border border-blue-200 p-1.5 text-blue-700 transition hover:bg-blue-50"
             title="Edit"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
+            <PencilSquareIcon className="h-4 w-4" />
           </button>
-          {row.status === 'pending' && (
+          {row.status === 'pending' ? (
             <button
-              onClick={() => handleUpdateStatus(row, 'accepted')}
-              className="text-green-600 hover:text-green-700"
+              type="button"
+              onClick={() => handleQuickAccept(row)}
+              className="rounded-lg border border-emerald-200 p-1.5 text-emerald-700 transition hover:bg-emerald-50"
               title="Accept"
             >
               <CheckIcon className="h-4 w-4" />
             </button>
-          )}
+          ) : null}
           <button
-            onClick={() => {
-              setSelectedBooking(row);
-              openDeleteModal();
-            }}
-            className="text-red-600 hover:text-red-700"
+            type="button"
+            onClick={() => openDeleteModal(row)}
+            className="rounded-lg border border-red-200 p-1.5 text-red-700 transition hover:bg-red-50"
             title="Delete"
           >
-            <XMarkIcon className="h-4 w-4" />
+            <TrashIcon className="h-4 w-4" />
           </button>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-2xl font-semibold text-gray-900">Bookings</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            Manage all service bookings and their status
-          </p>
+    <div className="space-y-6">
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="admin-section-title">Bookings</h1>
+          <p className="admin-section-subtitle">Track customer appointments and update booking lifecycle.</p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 sm:w-auto"
-          >
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Create Booking
-          </button>
-        </div>
-      </div>
+        <button type="button" onClick={() => setShowCreateModal(true)} className="admin-btn-primary w-full sm:w-auto">
+          <PlusIcon className="mr-2 h-4 w-4" />
+          Create Booking
+        </button>
+      </section>
 
-      {/* Date Range Filter */}
-      <div className="mt-6 bg-gray-50 px-4 py-3 rounded-lg">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Date Range:</label>
-            <input
-              type="date"
-              value={filterDateRange.start}
-              onChange={(e) => setFilterDateRange(prev => ({ ...prev, start: e.target.value }))}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
-            />
-            <span className="text-gray-500">to</span>
-            <input
-              type="date"
-              value={filterDateRange.end}
-              onChange={(e) => setFilterDateRange(prev => ({ ...prev, end: e.target.value }))}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
-            />
-          </div>
+      <section className="admin-card p-4 sm:p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <h2 className="text-sm font-semibold text-slate-700">Filter by scheduled date range</h2>
           <button
+            type="button"
             onClick={() => setFilterDateRange({ start: '', end: '' })}
-            className="text-sm text-gray-600 hover:text-gray-800"
+            className="text-sm font-medium text-blue-700 hover:text-blue-800"
           >
-            Clear dates
+            Clear Dates
           </button>
         </div>
-      </div>
-
-      <div className="mt-8">
-        {loading ? (
-          <TableSkeleton columns={8} rows={pagination.limit} />
-        ) : (
-          <DataTable
-            data={bookings}
-            columns={columns}
-            loading={loading}
-            error={error}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-            onSort={setSortConfig}
-            onSearch={setSearchTerm}
-            searchPlaceholder="Search bookings..."
-            showFilters={true}
-            filters={filterOptions}
-            onFilterChange={(key, value) => setFilterStatus(value)}
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <input
+            type="date"
+            value={filterDateRange.start}
+            onChange={(event) => setFilterDateRange((prev) => ({ ...prev, start: event.target.value }))}
+            className="admin-input"
           />
-        )}
-      </div>
+          <input
+            type="date"
+            value={filterDateRange.end}
+            onChange={(event) => setFilterDateRange((prev) => ({ ...prev, end: event.target.value }))}
+            className="admin-input"
+          />
+        </div>
+      </section>
 
-      {/* Create Booking Modal */}
+      <DataTable
+        data={bookings}
+        columns={columns}
+        loading={loading}
+        error={error}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        onSort={setSortConfig}
+        onSearch={setSearchTerm}
+        searchPlaceholder="Search booking id, customer, provider..."
+        showFilters
+        filters={filters}
+        onFilterChange={(_, value) => setFilterStatus(value)}
+      />
+
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create New Booking"
+        title="Create Booking"
         size="lg"
       >
-        <form onSubmit={handleCreateBooking} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Customer</label>
-              <select
-                name="user"
-                value={createFormData.user}
-                onChange={handleCreateInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
-                required
-              >
-                <option value="">Select Customer</option>
-                {users.map(u => (
-                  <option key={u._id} value={u._id}>{u.firstName} {u.lastName} ({u.phone})</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Provider</label>
-              <select
-                name="provider"
-                value={createFormData.provider}
-                onChange={handleCreateInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
-                required
-              >
-                <option value="">Select Provider</option>
-                {providers.map(p => (
-                  <option key={p._id} value={p._id}>{p.businessName || `${p.firstName} ${p.lastName}`} ({p.category})</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Service</label>
-              <select
-                name="service"
-                value={createFormData.service}
-                onChange={handleCreateInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
-                required
-              >
-                <option value="">Select Service</option>
-                {services.map(s => (
-                  <option key={s._id} value={s._id}>{s.name} (₹{s.price})</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Date</label>
-              <input
-                type="date"
-                name="date"
-                value={createFormData.date}
-                onChange={handleCreateInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Time</label>
-              <input
-                type="time"
-                name="time"
-                value={createFormData.time}
-                onChange={handleCreateInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
-                required
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Address</label>
-            <input
-              type="text"
-              name="address"
-              value={createFormData.address}
+        <form onSubmit={handleCreateBooking}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormInput
+              label="Customer"
+              name="user"
+              type="select"
+              value={createFormData.user}
               onChange={handleCreateInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
-              placeholder="Full service address"
+              options={users.map((user) => ({
+                value: user._id,
+                label: `${user.firstName || ''} ${user.lastName || ''} (${user.phone || user.email || '--'})`,
+              }))}
+              required
+            />
+            <FormInput
+              label="Provider"
+              name="provider"
+              type="select"
+              value={createFormData.provider}
+              onChange={handleCreateInputChange}
+              options={providers.map((provider) => ({
+                value: provider._id,
+                label: `${provider.businessName || provider.name} (${provider.phone || '--'})`,
+              }))}
+              required
+            />
+            <FormInput
+              label="Service"
+              name="service"
+              type="select"
+              value={createFormData.service}
+              onChange={handleCreateInputChange}
+              options={services.map((service) => ({
+                value: service._id,
+                label: `${service.name} (₹${Number(service.price || 0).toFixed(0)})`,
+              }))}
+              required
+            />
+            <FormInput
+              label="Date"
+              name="date"
+              type="date"
+              value={createFormData.date}
+              onChange={handleCreateInputChange}
+              required
+            />
+            <FormInput
+              label="Time"
+              name="time"
+              type="time"
+              value={createFormData.time}
+              onChange={handleCreateInputChange}
               required
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Notes</label>
-            <textarea
-              name="notes"
-              value={createFormData.notes}
-              onChange={handleCreateInputChange}
-              rows={3}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 sm:text-sm"
-              placeholder="Any additional notes..."
-            />
-          </div>
-          <FormActions
-            onCancel={() => setShowCreateModal(false)}
-            loading={formLoading}
-            submitLabel="Create Booking"
+          <FormInput
+            label="Address"
+            name="address"
+            value={createFormData.address}
+            onChange={handleCreateInputChange}
+            placeholder="Full service address"
+            required
           />
+          <FormInput
+            label="Notes"
+            name="notes"
+            type="textarea"
+            value={createFormData.notes}
+            onChange={handleCreateInputChange}
+            placeholder="Optional notes"
+          />
+          <FormActions onCancel={() => setShowCreateModal(false)} loading={formLoading} submitLabel="Create Booking" />
         </form>
       </Modal>
 
-      {/* View Booking Modal */}
-      <Modal
-        isOpen={showViewModal}
-        onClose={() => setShowViewModal(false)}
-        title="Booking Details"
-        size="lg"
-      >
-        {selectedBooking && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <Modal isOpen={showViewModal} onClose={() => setShowViewModal(false)} title="Booking Details" size="lg">
+        {selectedBooking ? (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Customer Info</h3>
-                <div className="mt-2 text-sm text-gray-900">
-                  <p className="font-semibold">{selectedBooking.user?.firstName} {selectedBooking.user?.lastName}</p>
-                  <p>{selectedBooking.user?.email}</p>
-                  <p>{selectedBooking.user?.phone}</p>
-                </div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Booking ID</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">#{selectedBooking.bookingId}</p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Provider Info</h3>
-                <div className="mt-2 text-sm text-gray-900">
-                  <p className="font-semibold">{selectedBooking.provider?.businessName}</p>
-                  <p>{selectedBooking.provider?.firstName} {selectedBooking.provider?.lastName}</p>
-                  <p>{selectedBooking.provider?.phone}</p>
-                </div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Status</p>
+                <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClassMap[selectedBooking.status] || statusClassMap.pending}`}>
+                  {String(selectedBooking.status || 'pending').replace('_', ' ')}
+                </span>
               </div>
-            </div>
-
-            <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Service Info</h3>
-              <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500">Service</p>
-                  <p className="text-sm font-medium">{selectedBooking.service?.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Scheduled For</p>
-                  <p className="text-sm font-medium">
-                    {new Date(selectedBooking.scheduledDate).toLocaleDateString()} at {new Date(selectedBooking.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Status</p>
-                  <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                    selectedBooking.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    selectedBooking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
-                    {selectedBooking.status.toUpperCase()}
-                  </span>
-                </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Customer</p>
+                <p className="mt-1 text-sm text-slate-700">
+                  {`${selectedBooking.user?.firstName || ''} ${selectedBooking.user?.lastName || ''}`.trim()}
+                </p>
               </div>
-            </div>
-
-            <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Financial Details</h3>
-              <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="text-xs text-gray-500">Total Amount</p>
-                  <p className="font-medium">₹{selectedBooking.totalAmount?.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Commission</p>
-                  <p className="font-medium text-amber-600">₹{selectedBooking.commissionAmount?.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Payment Status</p>
-                  <p className="font-medium">{selectedBooking.paymentStatus || 'Pending'}</p>
-                </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Provider</p>
+                <p className="mt-1 text-sm text-slate-700">{selectedBooking.provider?.businessName || '--'}</p>
               </div>
-            </div>
-
-            <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Address & Notes</h3>
-              <div className="mt-2 text-sm">
-                <p className="text-gray-900"><span className="font-medium">Address:</span> {selectedBooking.address}</p>
-                {selectedBooking.notes && (
-                  <p className="mt-2 text-gray-600"><span className="font-medium">Notes:</span> {selectedBooking.notes}</p>
-                )}
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Service</p>
+                <p className="mt-1 text-sm text-slate-700">{selectedBooking.service?.name || '--'}</p>
               </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Amount</p>
+                <p className="mt-1 text-sm text-slate-700">₹{Number(selectedBooking.totalAmount || 0).toFixed(2)}</p>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Address</p>
+                <p className="mt-1 text-sm text-slate-700">{selectedBooking.address || '--'}</p>
+              </div>
+              {selectedBooking.notes ? (
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Notes</p>
+                  <p className="mt-1 text-sm text-slate-700">{selectedBooking.notes}</p>
+                </div>
+              ) : null}
             </div>
           </div>
-        )}
+        ) : null}
       </Modal>
 
-      {/* Edit Booking Modal */}
-      <Modal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        title="Edit Booking"
-        size="md"
-      >
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Booking" size="md">
         <form onSubmit={handleUpdateBooking}>
           <FormInput
             label="Status"
@@ -675,43 +537,21 @@ const Bookings = () => {
             type="textarea"
             value={formData.notes}
             onChange={handleInputChange}
-            placeholder="Add any notes about this booking..."
+            placeholder="Add notes for this update"
           />
-          <FormActions
-            onCancel={() => setShowEditModal(false)}
-            loading={formLoading}
-          />
+          <FormActions onCancel={() => setShowEditModal(false)} loading={formLoading} />
         </form>
       </Modal>
 
-      {/* Status Update Modal */}
-      <Modal
-        isOpen={showStatusModal}
-        onClose={() => setShowStatusModal(false)}
-        title="Update Status"
-        size="md"
-      >
-        <form onSubmit={handleUpdateBooking}>
-          <div className="mb-4">
-            <p className="text-sm text-gray-600">
-              Are you sure you want to update the booking status to <strong>{formData.status}</strong>?
-            </p>
-          </div>
-          <FormInput
-            label="Notes (Optional)"
-            name="notes"
-            type="textarea"
-            value={formData.notes}
-            onChange={handleInputChange}
-            placeholder="Add any notes about this status change..."
-          />
-          <FormActions
-            onCancel={() => setShowStatusModal(false)}
-            loading={formLoading}
-            submitText="Update Status"
-          />
-        </form>
-      </Modal>
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteBooking}
+        title="Delete Booking"
+        message={`Delete booking #${selectedBooking?.bookingId || ''}? This action cannot be undone.`}
+        confirmText="Delete Booking"
+        type="danger"
+      />
     </div>
   );
 };

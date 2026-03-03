@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Scissors, X } from 'lucide-react';
+import { clearAuthSession } from '../utils/auth';
 
 const linkBaseClass = 'text-sm font-medium transition-colors duration-200';
 
@@ -17,22 +18,17 @@ export default function Navbar() {
       { to: '/services', label: 'Services' }
     ];
 
-    if (token) {
-      items.push({
-        to: role === 'provider' ? '/provider' : '/profile',
-        label: role === 'provider' ? 'Dashboard' : 'Profile'
-      });
+    if (token && role === 'user') {
+      items.push({ to: '/profile', label: 'Profile' });
     }
 
     return items;
   }, [token, role]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    localStorage.removeItem('user');
+    clearAuthSession();
     setMobileOpen(false);
-    nav('/login');
+    nav('/login', { replace: true });
   };
 
   const handleAuthAction = () => {

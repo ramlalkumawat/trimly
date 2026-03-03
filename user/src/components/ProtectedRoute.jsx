@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { clearAuthSession, getAuthSnapshot } from '../utils/auth';
 
 /**
  * Wrap a route element in this component to require authentication and optionally role.
@@ -8,27 +9,29 @@ import { Navigate, useLocation } from 'react-router-dom';
  *   - role: string or array of roles allowed (optional)
  */
 export default function ProtectedRoute({ children, role }) {
-  const token = localStorage.getItem('token');
-  const userRole = localStorage.getItem('role');
   const location = useLocation();
+  const { token, role: userRole } = getAuthSnapshot();
 
-  if (!token && location.pathname !== '/login') {
-    return <Navigate to="/login" replace />;
+  if (!token || !userRole) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (role && token) {
-    const allowed = Array.isArray(role) ? role : [role];
-
-    if (!allowed.includes(userRole)) {
-      if (userRole === 'user' && location.pathname !== '/services') return <Navigate to="/services" replace />;
-      if (userRole === 'provider' && location.pathname !== '/provider') return <Navigate to="/provider" replace />;
-      if (userRole === 'admin') {
-        window.location.href = '/admin';
-        return null;
-      }
-      if (location.pathname !== '/') return <Navigate to="/" replace />;
-    }
+  if (!role) {
+    return children;
   }
 
-  return children;
+  const allowed = Array.isArray(role) ? role : [role];
+  if (allowed.includes(userRole)) {
+    return children;
+  }
+
+  // User app should only expose customer-role surfaces.
+  clearAuthSession();
+  return (
+    <Navigate
+      to="/login"
+      replace
+      state={{ from: location.pathname, error: 'Only customer accounts are allowed in this app.' }}
+    />
+  );
 }

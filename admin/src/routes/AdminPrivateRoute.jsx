@@ -9,8 +9,11 @@ const AdminPrivateRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
+      <div className="flex min-h-screen items-center justify-center bg-admin-app">
+        <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-blue-700" />
+          <span className="text-sm font-medium text-slate-700">Checking session...</span>
+        </div>
       </div>
     );
   }

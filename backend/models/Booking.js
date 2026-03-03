@@ -179,6 +179,7 @@ bookingSchema.pre('save', function(next) {
 // Index for performance
 bookingSchema.index({ providerId: 1, status: 1, createdAt: -1 });
 bookingSchema.index({ customerId: 1, status: 1, createdAt: -1 });
+bookingSchema.index({ customerId: 1, date: 1, time: 1 });
 bookingSchema.index({ serviceId: 1, status: 1 });
 bookingSchema.index({ status: 1, scheduledTime: 1 });
 bookingSchema.index({ timeoutAt: 1 });

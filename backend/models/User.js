@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // User schema covering customers, providers, and admins with profile/location fields.
 const addressSchema = new mongoose.Schema({
@@ -146,6 +147,14 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+const resolveSaltRounds = () => {
+  const configured = Number(process.env.BCRYPT_SALT_ROUNDS || 10);
+  if (!Number.isFinite(configured) || configured < 8) {
+    return 10;
+  }
+  return Math.min(Math.floor(configured), 14);
+};
+
 // Pre-save middleware to handle name field compatibility
 userSchema.pre('save', function(next) {
   // If firstName or lastName are set but name is not, generate name
@@ -164,5 +173,16 @@ userSchema.pre('save', function(next) {
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ role: 1, approved: 1, verified: 1 });
 userSchema.index({ serviceIds: 1, role: 1, approved: 1 });
+
+// Hashing helper shared across controllers to keep password hashing consistent.
+userSchema.statics.hashPassword = async function hashPassword(plainPassword = '') {
+  const password = String(plainPassword || '');
+  return bcrypt.hash(password, resolveSaltRounds());
+};
+
+// Password verification helper used in auth login flow.
+userSchema.methods.comparePassword = function comparePassword(plainPassword = '') {
+  return bcrypt.compare(String(plainPassword || ''), this.password || '');
+};
 
 module.exports = mongoose.model('User', userSchema);

@@ -145,8 +145,8 @@ Create a `.env` file:
 
 ```bash
 # API Configuration
-VITE_API_URL=http://localhost:5000/api
-VITE_SOCKET_URL=http://localhost:5000
+VITE_API_URL=https://trimly-backend-ramlal.onrender.com
+VITE_SOCKET_URL=https://trimly-backend-ramlal.onrender.com
 ```
 
 ## 📡 API Endpoints

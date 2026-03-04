@@ -1,47 +1,4 @@
-import axios from 'axios';
-import { beginRequest, endRequest } from '../utils/loadingBus';
-
-const rawApiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_API_URL ||
-  'http://localhost:5000/api';
-const API_BASE_URL = rawApiBaseUrl.endsWith('/api')
-  ? rawApiBaseUrl
-  : `${rawApiBaseUrl.replace(/\/$/, '')}/api`;
-
-// Shared axios client used by some legacy admin pages.
-const api = axios.create({
-  baseURL: API_BASE_URL
-});
-
-api.interceptors.request.use((config) => {
-  const skipGlobalLoader = config.headers?.['x-skip-global-loader'] === 'true';
-  if (!skipGlobalLoader) {
-    beginRequest();
-    config.__loaderTracked = true;
-  }
-
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => {
-    if (response.config?.__loaderTracked) {
-      endRequest();
-    }
-    return response;
-  },
-  (error) => {
-    if (error.config?.__loaderTracked) {
-      endRequest();
-    }
-    return Promise.reject(error);
-  }
-);
+import api from './axios';
 
 export const authAPI = {
   createAccount: (userData) => api.post('/auth/register', { ...userData, role: 'admin' }),

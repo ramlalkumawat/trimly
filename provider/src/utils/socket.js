@@ -1,7 +1,12 @@
 import { io } from 'socket.io-client';
 
 // Socket service wrapper for connection management and provider event channels.
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.REACT_APP_API_URL ||
+  'https://trimly-backend-ramlal.onrender.com';
 
 class SocketService {
   constructor() {

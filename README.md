@@ -195,15 +195,6 @@ Set secret env vars in Render:
 
 ---
 
-## 🖼️ Screenshots (Placeholders)
-
-Add images under `docs/screenshots/` and update links:
-
-```md
-![User Home](./docs/screenshots/user-home.png)
-![Provider Dashboard](./docs/screenshots/provider-dashboard.png)
-![Admin Dashboard](./docs/screenshots/admin-dashboard.png)
-```
 
 ---
 

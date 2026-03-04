@@ -35,7 +35,7 @@ const DataTable = ({
       <div className="p-6 border-b border-gray-200">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           {/* Search */}
-          <div className="flex-1 min-w-0">
+          <div className="w-full md:flex-1 min-w-0">
             <input
               type="text"
               placeholder={searchPlaceholder}
@@ -47,12 +47,12 @@ const DataTable = ({
 
           {/* Filters */}
           {filters && Object.keys(filters).length > 0 && (
-            <div className="flex gap-2">
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:w-auto">
               {Object.entries(filters).map(([key, options]) => (
                 <select
                   key={key}
                   onChange={(e) => handleFilter(key, e.target.value)}
-                  className="px-3 py-2 bg-input-bg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text-primary text-sm"
+                  className="w-full md:w-auto min-w-0 sm:min-w-[140px] px-3 py-2 bg-input-bg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text-primary text-sm"
                 >
                   <option value="">All {key}</option>
                   {options.map((opt) => (

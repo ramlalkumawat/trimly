@@ -352,12 +352,12 @@ const Bookings = () => {
       </section>
 
       <section className="admin-card p-4 sm:p-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold text-slate-700">Filter by scheduled date range</h2>
           <button
             type="button"
             onClick={() => setFilterDateRange({ start: '', end: '' })}
-            className="text-sm font-medium text-blue-700 hover:text-blue-800"
+            className="self-start text-sm font-medium text-blue-700 hover:text-blue-800 sm:self-auto"
           >
             Clear Dates
           </button>

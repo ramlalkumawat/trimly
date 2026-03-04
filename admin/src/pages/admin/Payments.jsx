@@ -346,32 +346,37 @@ const Payments = () => {
       </div>
 
       {/* Date Range Filter */}
-      <div className="mt-6 bg-gray-50 px-4 py-3 rounded-lg">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Date Range:</label>
-            <input
-              type="date"
-              value={filterDateRange.start}
-              onChange={(e) => setFilterDateRange(prev => ({ ...prev, start: e.target.value }))}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
-            />
-            <span className="text-gray-500">to</span>
-            <input
-              type="date"
-              value={filterDateRange.end}
-              onChange={(e) => setFilterDateRange(prev => ({ ...prev, end: e.target.value }))}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500"
-            />
-          </div>
+      <section className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-sm font-semibold text-slate-700">Filter by transaction date range</h2>
           <button
             onClick={() => setFilterDateRange({ start: '', end: '' })}
-            className="text-sm text-gray-600 hover:text-gray-800"
+            className="self-start text-sm font-medium text-slate-600 hover:text-slate-800 sm:self-auto"
           >
             Clear dates
           </button>
         </div>
-      </div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-500">From</span>
+            <input
+              type="date"
+              value={filterDateRange.start}
+              onChange={(e) => setFilterDateRange(prev => ({ ...prev, start: e.target.value }))}
+              className="admin-input mt-1"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-500">To</span>
+            <input
+              type="date"
+              value={filterDateRange.end}
+              onChange={(e) => setFilterDateRange(prev => ({ ...prev, end: e.target.value }))}
+              className="admin-input mt-1"
+            />
+          </label>
+        </div>
+      </section>
 
       <div className="mt-8">
         <DataTable

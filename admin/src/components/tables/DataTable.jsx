@@ -78,7 +78,7 @@ const DataTable = ({
       <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {showSearch ? (
-            <div className="relative w-full max-w-xl">
+            <div className="relative w-full lg:max-w-xl">
               <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -88,18 +88,16 @@ const DataTable = ({
                 className="admin-input pl-9"
               />
             </div>
-          ) : (
-            <div />
-          )}
+          ) : null}
 
           {showFilters && filters?.length ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:w-auto lg:grid-cols-none lg:grid-flow-col lg:auto-cols-max">
               {filters.map((filter) => (
                 <select
                   key={filter.key}
                   value={filter.value}
                   onChange={(event) => onFilterChange?.(filter.key, event.target.value)}
-                  className="admin-input min-w-[170px]"
+                  className="admin-input w-full lg:min-w-[170px]"
                 >
                   {filter.options?.map((option) => (
                     <option key={`${filter.key}_${option.value}`} value={option.value}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   ArrowLeftOnRectangleIcon,
@@ -34,6 +34,25 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse
   const { logout, user } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen || window.innerWidth >= 1024) return undefined;
+
+    const originalOverflow = document.body.style.overflow;
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        onClose?.();
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, onClose]);
+
   const handleNavClick = () => {
     if (window.innerWidth < 1024) {
       onClose?.();
@@ -65,7 +84,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse
         className={[
           'fixed inset-y-0 left-0 z-40 flex h-screen flex-col border-r border-slate-800/70 bg-slate-950 text-slate-200',
           'transition-[width,transform] duration-300 ease-out',
-          'w-72 lg:translate-x-0',
+          'w-[85vw] max-w-72 lg:max-w-none lg:translate-x-0',
           isCollapsed ? 'lg:w-24' : 'lg:w-72',
           isOpen ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}

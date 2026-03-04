@@ -5,7 +5,7 @@ const API_ORIGIN =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.REACT_APP_API_URL ||
-  'https://trimly-backend-ramlal.onrender.com';
+  'https://trimly-1q56.onrender.com';
 const API_BASE_URL = API_ORIGIN.endsWith('/api')
   ? API_ORIGIN
   : `${API_ORIGIN.replace(/\/$/, '')}/api`;

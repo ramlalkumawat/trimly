@@ -146,8 +146,8 @@ Create a `.env` file based on `.env.example`:
 
 ```bash
 # API Configuration
-VITE_API_URL=https://trimly-backend-ramlal.onrender.com
-VITE_API_BASE_URL=https://trimly-backend-ramlal.onrender.com
+VITE_API_URL=https://trimly-1q56.onrender.com
+VITE_API_BASE_URL=https://trimly-1q56.onrender.com
 
 # Environment
 VITE_NODE_ENV=development

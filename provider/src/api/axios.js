@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { beginRequest, endRequest } from '../utils/loadingBus';
 
-const DEFAULT_API_ORIGIN = 'https://trimly-backend-ramlal.onrender.com';
+const DEFAULT_API_ORIGIN = 'https://trimly-1q56.onrender.com';
 const rawApiUrl =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||

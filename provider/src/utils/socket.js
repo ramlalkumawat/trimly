@@ -6,7 +6,7 @@ const SOCKET_URL =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.REACT_APP_API_URL ||
-  'https://trimly-backend-ramlal.onrender.com';
+  'https://trimly-1q56.onrender.com';
 
 class SocketService {
   constructor() {

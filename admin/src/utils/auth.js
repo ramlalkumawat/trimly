@@ -1,7 +1,12 @@
-const AUTH_KEYS = ['token', 'user', 'role'];
+const AUTH_KEYS = ['token', 'user', 'role', 'accessToken', 'refreshToken'];
+
+const clearStorageAuthKeys = (storage) => {
+  AUTH_KEYS.forEach((key) => storage.removeItem(key));
+};
 
 export const clearAuthSession = () => {
-  AUTH_KEYS.forEach((key) => localStorage.removeItem(key));
+  clearStorageAuthKeys(localStorage);
+  clearStorageAuthKeys(sessionStorage);
 };
 
 export const getStoredToken = () => localStorage.getItem('token');

@@ -1,274 +1,237 @@
-# Trimly Admin Dashboard
+# 🛡️ Trimly Admin Panel
 
-A production-ready admin dashboard for the Trimly hyperlocal salon startup, built with modern React technologies and featuring comprehensive CRUD operations for all business entities.
-
-## 🚀 Tech Stack
-
-- **React** (v18) + **Vite** for fast development
-- **Tailwind CSS** for premium, modern styling with amber accent
-- **React Router DOM** for client-side routing
-- **Axios** with interceptors for API communication
-- **JWT Authentication** with automatic token refresh
-- **Recharts** for real-time analytics and data visualization
-- **Heroicons** for consistent iconography
-- **React Spinners** for loading states
-
-## 📋 Features
-
-### 🔐 Authentication & Security
-- JWT-based authentication with automatic token refresh
-- Role-based access control (admin-only)
-- Protected routes with automatic redirect
-- Token expiration handling and auto-logout
-- Secure API communication with interceptors
-
-### 👥 Users Management
-- Full CRUD operations (Create, Read, Update, Delete)
-- Server-side pagination and search with debounce
-- Status management (active/inactive)
-- Role assignment (user/admin)
-- Detailed user profiles with audit trails
-
-### 💇 Providers Management  
-- Complete provider lifecycle management
-- Document verification system
-- Approval/rejection workflow
-- Commission rate configuration
-- Performance tracking and statistics
-- Soft delete implementation
-
-### 🛠️ Services Management
-- Service catalog with categories
-- Pricing and duration management
-- Commission percentage configuration
-- Active/inactive status control
-- Image support for services
-- Category-based filtering
-
-### 📅 Bookings Management
-- Comprehensive booking control
-- Status workflow (pending → confirmed → in-progress → completed)
-- Date range filtering
-- Provider and user linking
-- Real-time status updates
-- Booking details with full context
-
-### 💳 Payments Processing
-- Transaction management and tracking
-- Revenue summary and analytics
-- Refund processing with confirmation
-- Payment status badges
-- Commission calculation
-- Multiple payment method support
-
-### 📊 Analytics Dashboard
-- Real-time business metrics
-- Revenue trend analysis with line charts
-- Booking growth visualization
-- Service distribution pie charts
-- Top performing providers table
-- Recent activity feed
-
-### ⚙️ System Settings
-- Profile management
-- Password change functionality
-- System configuration
-- Maintenance mode toggle
-- Notification preferences
-
-## 🏗️ Architecture
-
-### Folder Structure
-```
-src/
- ├── components/
- │   ├── common/          # Toast notifications
- │   ├── forms/           # Reusable form components
- │   ├── layout/          # Loading skeletons
- │   ├── modals/          # Modal components
- │   └── tables/          # Data table component
- ├── hooks/               # Custom React hooks
- ├── pages/admin/         # Admin panel pages
- │   ├── Dashboard.jsx
- │   ├── Users.jsx
- │   ├── Providers.jsx
- │   ├── Services.jsx
- │   ├── Bookings.jsx
- │   ├── Payments.jsx
- │   ├── Analytics.jsx
- │   └── Settings.jsx
- ├── routes/              # Route protection
- ├── utils/               # API utilities
- └── context/             # Authentication context
-```
-
-### API Integration
-- Centralized API configuration in `src/utils/api.js`
-- Automatic JWT token attachment
-- Global error handling with 401 redirect
-- Environment-based configuration
-- Comprehensive endpoint coverage
-
-### Component Design
-- Reusable DataTable with sorting, pagination, search
-- Modal system for forms and confirmations
-- FormInput component with validation
-- Loading skeletons for better UX
-- Toast notification system
-
-## 🚀 Quick Start
-
-1. **Environment Setup**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your API configuration
-   ```
-
-2. **Install Dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
-
-4. **Build for Production**
-   ```bash
-   npm run build
-   npm run preview
-   ```
-
-## 🔧 Environment Variables
-
-Create a `.env` file based on `.env.example`:
-
-```bash
-# API Configuration
-VITE_API_URL=https://trimly-1q56.onrender.com
-VITE_API_BASE_URL=https://trimly-1q56.onrender.com
-
-# Environment
-VITE_NODE_ENV=development
-
-# Optional integrations
-# VITE_STRIPE_PUBLIC_KEY=pk_test_...
-# VITE_GOOGLE_MAPS_API_KEY=...
-```
-
-## 📡 API Endpoints
-
-The dashboard expects the following API structure:
-
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout  
-- `POST /api/auth/refresh` - Token refresh
-
-### Users
-- `GET /api/admin/users` - List users with pagination
-- `POST /api/admin/users` - Create user
-- `PUT /api/admin/users/:id` - Update user
-- `PATCH /api/admin/users/:id/status` - Update status
-- `DELETE /api/admin/users/:id` - Soft delete user
-
-### Providers
-- `GET /api/admin/providers` - List providers
-- `POST /api/admin/providers` - Create provider
-- `PUT /api/admin/providers/:id` - Update provider
-- `PATCH /api/admin/providers/:id/verify` - Verify provider
-- `DELETE /api/admin/providers/:id` - Soft delete provider
-
-### Services
-- `GET /api/admin/services` - List services
-- `POST /api/admin/services` - Create service
-- `PUT /api/admin/services/:id` - Update service
-- `DELETE /api/admin/services/:id` - Delete service
-
-### Bookings
-- `GET /api/admin/bookings` - List bookings
-- `PUT /api/admin/bookings/:id` - Update booking
-- `DELETE /api/admin/bookings/:id` - Delete booking
-
-### Payments
-- `GET /api/admin/payments` - List payments
-- `POST /api/admin/payments/refund/:id` - Process refund
-
-### Analytics
-- `GET /api/admin/analytics` - Dashboard analytics
-
-## 🎨 Design System
-
-### Colors
-- **Primary**: Amber (`#F59E0B`) - Brand accent
-- **Success**: Green (`#10B981`)
-- **Warning**: Yellow (`#F59E0B`)  
-- **Error**: Red (`#EF4444`)
-- **Info**: Blue (`#3B82F6`)
-
-### Typography
-- Clean, modern font stack
-- Consistent heading hierarchy
-- Readable body text
-
-### Components
-- Consistent spacing and sizing
-- Hover states and transitions
-- Responsive design patterns
-- Loading states and error handling
-
-## 🔒 Security Features
-
-- JWT token validation and refresh
-- Role-based access control
-- Automatic logout on token expiration
-- Secure API communication
-- Input validation and sanitization
-- Soft delete for data integrity
-
-## 📱 Responsive Design
-
-- Mobile-first approach
-- Collapsible sidebar navigation
-- Responsive data tables
-- Touch-friendly interface
-- Optimized for all screen sizes
-
-## 🧪 Development Notes
-
-- No hardcoded data - all API-driven
-- Comprehensive error handling
-- Loading states for all async operations
-- Debounced search inputs
-- Form validation with user feedback
-- Clean, maintainable code structure
-
-## 🚀 Production Deployment
-
-1. Build the application:
-   ```bash
-   npm run build
-   ```
-
-2. Deploy the `dist` folder to your web server
-
-3. Configure environment variables for production
-
-4. Ensure API endpoints are accessible and properly secured
-
-## 🤝 Contributing
-
-1. Follow the existing code structure and patterns
-2. Use the established design system
-3. Implement proper error handling
-4. Add loading states for new features
-5. Test responsive design
-
-## 📞 Support
-
-For technical support or questions about the admin dashboard, please contact your development team.
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-4-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![JWT Auth](https://img.shields.io/badge/Auth-JWT-111827?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://jwt.io/)
+[![Deploy](https://img.shields.io/badge/Deploy-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com/)
 
 ---
 
-**Built with ❤️ for Trimly - Premium Salon Management Platform**
+## 📌 Project Overview
+
+Trimly Admin Panel is the operations dashboard for managing the entire platform. It provides admin-only access to users, providers, services, bookings, commissions, payments, analytics, and profile settings.
+
+---
+
+## ✨ Features
+
+- Dashboard overview with operational metrics.
+- User management with status controls.
+- Provider management and verification workflow.
+- Service catalog management.
+- Booking lifecycle monitoring.
+- Payments and refund actions.
+- Commission management.
+- Analytics visualizations.
+- Admin profile and settings management.
+- Single sidebar logout with session cleanup.
+
+---
+
+## 🧰 Tech Stack
+
+| Category | Tools |
+|---|---|
+| Frontend | React 18, Vite |
+| Styling | Tailwind CSS |
+| Routing | React Router DOM |
+| API Client | Axios (with interceptors) |
+| Charts | Recharts |
+| Icons | Heroicons |
+| State/Auth | React Context (`AuthContext`) |
+
+---
+
+## 📁 Folder Structure
+
+```text
+admin/
+├── public/
+├── src/
+│   ├── api/
+│   │   └── axios.js
+│   ├── components/
+│   ├── context/
+│   │   └── AuthContext.jsx
+│   ├── hooks/
+│   ├── layouts/
+│   ├── pages/
+│   │   └── admin/
+│   ├── routes/
+│   │   └── AdminPrivateRoute.jsx
+│   ├── utils/
+│   │   ├── api.js
+│   │   └── auth.js
+│   ├── App.jsx
+│   └── main.jsx
+├── .env.example
+├── vercel.json
+└── package.json
+```
+
+---
+
+## 🚀 Installation Guide
+
+### 1. Move to app directory
+
+```bash
+cd admin
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Setup environment
+
+```bash
+cp .env.example .env
+```
+
+### 4. Run development server
+
+```bash
+npm run dev
+```
+
+### 5. Build for production
+
+```bash
+npm run build
+npm run preview
+```
+
+---
+
+## 🔐 Environment Variables
+
+Create `.env` in `admin/`:
+
+```env
+VITE_API_URL=https://trimly-1q56.onrender.com
+VITE_API_BASE_URL=https://trimly-1q56.onrender.com
+VITE_NODE_ENV=development
+```
+
+Optional keys from `.env.example`:
+
+```env
+# VITE_STRIPE_PUBLIC_KEY=pk_test_...
+# VITE_GOOGLE_MAPS_API_KEY=...
+# VITE_SENTRY_DSN=...
+```
+
+---
+
+## 🔌 API Configuration
+
+Primary API client: `src/api/axios.js`
+
+### Base URL resolution
+
+1. `VITE_API_URL`
+2. `VITE_API_BASE_URL`
+3. `REACT_APP_API_URL`
+4. fallback: `https://trimly-1q56.onrender.com`
+
+`/api` is auto-appended when needed.
+
+### Admin API modules
+
+Defined in `src/utils/api.js`:
+
+- `adminAPI.auth.*`
+- `adminAPI.users.*`
+- `adminAPI.providers.*`
+- `adminAPI.services.*`
+- `adminAPI.bookings.*`
+- `adminAPI.payments.*`
+- `adminAPI.commissions.*`
+- `adminAPI.analytics.*`
+- `adminAPI.profile.*`
+
+---
+
+## ☁️ Deployment (Vercel + Render)
+
+### Frontend (Vercel)
+
+- Root directory: `admin`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Include `VITE_API_URL` / `VITE_API_BASE_URL`
+- `vercel.json` already includes SPA route fallback to `index.html`
+
+### Backend (Render)
+
+Admin panel consumes the backend deployed from root [`render.yaml`](../render.yaml).
+
+Ensure Render service has:
+
+- `MONGO_URI`
+- `JWT_SECRET`
+- `CLIENT_URLS` (include your admin Vercel domain)
+
+---
+
+## 🖼️ Screenshots (Placeholders)
+
+```md
+![Admin Dashboard](./docs/screenshots/admin-dashboard.png)
+![Admin Users](./docs/screenshots/admin-users.png)
+![Admin Providers](./docs/screenshots/admin-providers.png)
+![Admin Analytics](./docs/screenshots/admin-analytics.png)
+```
+
+---
+
+## 🧭 Usage Instructions
+
+1. Open admin app URL.
+2. Login using an account with `role: admin`.
+3. Navigate modules from sidebar:
+   - Dashboard
+   - Users
+   - Providers
+   - Services
+   - Bookings
+   - Payments
+   - Commissions
+   - Analytics
+   - Settings
+   - Profile
+4. Use sidebar `Logout` to end session safely.
+
+---
+
+## 🔒 Security / Auth Flow (JWT)
+
+1. Login via `POST /api/auth/login`.
+2. Token is stored in `localStorage`.
+3. Axios request interceptor attaches `Bearer` token.
+4. `AuthContext` enforces admin role check after login.
+5. Token expiry is checked from JWT payload (`exp`).
+6. Auto refresh runs periodically via `/api/auth/refresh`.
+7. On `401`, session is cleared and app redirects to `/login`.
+8. Logout clears auth keys from `localStorage` + `sessionStorage` and redirects.
+
+---
+
+## 🌱 Future Improvements
+
+- Add role-based granular permissions (RBAC matrix).
+- Add audit logs for critical admin actions.
+- Add advanced export/reporting (CSV/PDF).
+- Add unit/integration tests for admin flows.
+- Add feature flags for staged rollout.
+
+---
+
+### **Designed & Developed by Ramlal Kumawat**
+
+[![Instagram](https://img.shields.io/badge/Instagram-@_ramlal__kumawat-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/_ramlal__kumawat/)
+[![Trimly Ecosystem](https://img.shields.io/badge/Back_to-Trimly_Root-111827?style=for-the-badge&logo=github&logoColor=white)](../README.md)

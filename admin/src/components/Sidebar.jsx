@@ -157,6 +157,24 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse
                   <span className={`ml-3 ${isCollapsed ? 'lg:hidden' : ''}`}>{label}</span>
                 </NavLink>
               ))}
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={loggingOut}
+                title={isCollapsed ? 'Logout' : undefined}
+                className={[
+                  'group flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                  isCollapsed ? 'lg:justify-center lg:px-2' : '',
+                  'text-slate-300 hover:bg-slate-800/80 hover:text-white',
+                  'disabled:cursor-not-allowed disabled:opacity-60',
+                ].join(' ')}
+              >
+                <ArrowLeftOnRectangleIcon className="h-5 w-5 shrink-0" />
+                <span className={`ml-3 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                  {loggingOut ? 'Logging out...' : 'Logout'}
+                </span>
+              </button>
             </nav>
           </div>
 
@@ -173,32 +191,8 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse
 
             <button
               type="button"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              title={isCollapsed ? 'Logout' : undefined}
-              className={[
-                'group relative flex w-full items-center overflow-hidden rounded-2xl border border-rose-300/35',
-                'bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 px-3 py-2.5 text-sm font-semibold text-white',
-                'shadow-lg shadow-rose-900/35 transition-all duration-200',
-                'hover:-translate-y-0.5 hover:shadow-xl hover:shadow-rose-900/45',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/60',
-                'disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-75',
-                isCollapsed ? 'lg:justify-center lg:px-2' : '',
-              ].join(' ')}
-            >
-              <span className="absolute inset-0 bg-gradient-to-r from-white/15 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-              <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/15">
-                <ArrowLeftOnRectangleIcon className="h-4 w-4" />
-              </span>
-              <span className={`ml-3 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                {loggingOut ? 'Logging out...' : 'Logout'}
-              </span>
-            </button>
-
-            <button
-              type="button"
               onClick={onToggleCollapse}
-              className={`mt-3 hidden w-full items-center rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 lg:flex ${isCollapsed ? 'justify-center px-2' : 'justify-center'}`}
+              className={`hidden w-full items-center rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 lg:flex ${isCollapsed ? 'justify-center px-2' : 'justify-center'}`}
             >
               <Bars3BottomLeftIcon className="h-5 w-5 shrink-0" />
               <span className={`ml-2 ${isCollapsed ? 'hidden' : ''}`}>Collapse</span>

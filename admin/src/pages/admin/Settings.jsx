@@ -21,7 +21,7 @@ const tabs = [
 // Settings page for profile, security, notification, and system preferences.
 const Settings = () => {
   const toast = useToast();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
 
@@ -248,9 +248,6 @@ const Settings = () => {
               <article className="admin-card p-5 sm:p-6">
                 <h3 className="text-lg font-semibold text-slate-900">Session</h3>
                 <p className="mt-1 text-sm text-slate-500">Signed in as {userDisplayName}</p>
-                <button type="button" onClick={logout} className="admin-btn-danger mt-4">
-                  Sign Out
-                </button>
               </article>
             </section>
           ) : null}

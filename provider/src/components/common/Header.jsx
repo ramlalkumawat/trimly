@@ -50,6 +50,7 @@ const Header = ({ onOpenMobileMenu, collapsed, onToggleCollapse }) => {
   const [pendingCount, setPendingCount] = useState(0);
   const [refreshingCount, setRefreshingCount] = useState(false);
   const notificationPanelRef = useRef(null);
+  const notificationButtonRef = useRef(null);
 
   const pageTitle = useMemo(() => {
     const path = location.pathname;
@@ -85,13 +86,26 @@ const Header = ({ onOpenMobileMenu, collapsed, onToggleCollapse }) => {
     if (!notificationOpen) return undefined;
 
     const handleOutsideClick = (event) => {
-      if (!notificationPanelRef.current?.contains(event.target)) {
+      const panelNode = notificationPanelRef.current;
+      const buttonNode = notificationButtonRef.current;
+      const target = event.target;
+
+      if (panelNode?.contains(target) || buttonNode?.contains(target)) return;
+      setNotificationOpen(false);
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
         setNotificationOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('pointerdown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, [notificationOpen]);
 
   return (
@@ -125,10 +139,12 @@ const Header = ({ onOpenMobileMenu, collapsed, onToggleCollapse }) => {
         <div className="flex items-center gap-2">
           <div className="relative">
             <button
+              ref={notificationButtonRef}
               type="button"
               onClick={() => setNotificationOpen((value) => !value)}
               className="relative inline-flex items-center rounded-xl border border-zinc-200 bg-white p-2 text-zinc-700 transition-colors duration-300 hover:bg-zinc-100"
               aria-label="Toggle notifications"
+              aria-expanded={notificationOpen}
             >
               <Bell className="h-4 w-4" />
               {pendingCount > 0 ? (
@@ -141,7 +157,7 @@ const Header = ({ onOpenMobileMenu, collapsed, onToggleCollapse }) => {
             {notificationOpen ? (
               <div
                 ref={notificationPanelRef}
-                className="absolute right-0 top-12 w-80 rounded-2xl border border-zinc-200 bg-white p-3 shadow-lg"
+                className="fixed left-3 right-3 top-[4.5rem] z-40 max-h-[70vh] overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-3 shadow-lg sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-80 sm:max-h-[24rem]"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-zinc-900">Notifications</h3>

@@ -78,14 +78,14 @@ const DataTable = ({
       <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {showSearch ? (
-            <div className="relative w-full lg:max-w-xl">
+            <div className="relative w-full min-w-0 lg:max-w-xl">
               <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder={searchPlaceholder}
-                className="admin-input pl-9"
+                className="admin-input !pl-10 pr-3"
               />
             </div>
           ) : null}

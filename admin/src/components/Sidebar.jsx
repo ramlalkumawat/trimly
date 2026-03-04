@@ -149,9 +149,21 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse
             type="button"
             onClick={handleLogout}
             disabled={loggingOut}
-            className={`flex w-full items-center rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2.5 text-sm font-medium text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70 ${isCollapsed ? 'lg:justify-center lg:px-2' : ''}`}
+            title={isCollapsed ? 'Logout' : undefined}
+            className={[
+              'group relative flex w-full items-center overflow-hidden rounded-2xl border border-rose-300/35',
+              'bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 px-3 py-2.5 text-sm font-semibold text-white',
+              'shadow-lg shadow-rose-900/35 transition-all duration-200',
+              'hover:-translate-y-0.5 hover:shadow-xl hover:shadow-rose-900/45',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/60',
+              'disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-75',
+              isCollapsed ? 'lg:justify-center lg:px-2' : '',
+            ].join(' ')}
           >
-            <ArrowLeftOnRectangleIcon className="h-5 w-5 shrink-0" />
+            <span className="absolute inset-0 bg-gradient-to-r from-white/15 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+            <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/15">
+              <ArrowLeftOnRectangleIcon className="h-4 w-4" />
+            </span>
             <span className={`ml-3 ${isCollapsed ? 'lg:hidden' : ''}`}>
               {loggingOut ? 'Logging out...' : 'Logout'}
             </span>

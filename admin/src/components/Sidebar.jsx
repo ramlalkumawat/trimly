@@ -130,35 +130,37 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse
           </button>
         </div>
 
-        <div
-          ref={navScrollRef}
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 py-4"
-          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-        >
-          <nav className="space-y-1.5">
-            {links.map(({ to, label, Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                title={isCollapsed ? label : undefined}
-                onClick={handleNavClick}
-                className={({ isActive }) =>
-                  [
-                    'group flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                    isCollapsed ? 'lg:justify-center lg:px-2' : '',
-                    isActive
-                      ? 'bg-gradient-to-r from-indigo-500/30 to-blue-500/20 text-white shadow-inner shadow-indigo-900/30'
-                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white',
-                  ].join(' ')
-                }
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                <span className={`ml-3 ${isCollapsed ? 'lg:hidden' : ''}`}>{label}</span>
-              </NavLink>
-            ))}
-          </nav>
+        <div className="flex min-h-0 flex-1 flex-col justify-between">
+          <div
+            ref={navScrollRef}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+          >
+            <nav className="space-y-1.5">
+              {links.map(({ to, label, Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  title={isCollapsed ? label : undefined}
+                  onClick={handleNavClick}
+                  className={({ isActive }) =>
+                    [
+                      'group flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                      isCollapsed ? 'lg:justify-center lg:px-2' : '',
+                      isActive
+                        ? 'bg-gradient-to-r from-indigo-500/30 to-blue-500/20 text-white shadow-inner shadow-indigo-900/30'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white',
+                    ].join(' ')
+                  }
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className={`ml-3 ${isCollapsed ? 'lg:hidden' : ''}`}>{label}</span>
+                </NavLink>
+              ))}
+            </nav>
+          </div>
 
-          <div className="mt-4 border-t border-slate-800/80 pt-4">
+          <div className="shrink-0 border-t border-slate-800/80 px-3 py-4">
             <div className={`mb-3 flex items-center gap-3 rounded-xl bg-slate-900 px-3 py-2.5 ${isCollapsed ? 'lg:justify-center lg:px-2' : ''}`}>
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-500/30 text-xs font-semibold text-indigo-100">
                 {(user?.name || 'AD').slice(0, 2).toUpperCase()}

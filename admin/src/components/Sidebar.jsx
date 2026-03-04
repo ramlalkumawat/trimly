@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   ArrowLeftOnRectangleIcon,
   Bars3BottomLeftIcon,
@@ -32,6 +32,8 @@ const links = [
 // Collapsible admin sidebar with route highlighting and built-in logout action.
 export default function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }) {
   const { logout, user } = useAuth();
+  const location = useLocation();
+  const navScrollRef = useRef(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -52,6 +54,25 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    const container = navScrollRef.current;
+    if (!container) return;
+
+    // NavLink marks active route using aria-current="page".
+    const activeLink = container.querySelector('a[aria-current="page"]');
+    if (!activeLink) return;
+
+    const linkTop = activeLink.offsetTop;
+    const linkBottom = linkTop + activeLink.offsetHeight;
+    const viewTop = container.scrollTop;
+    const viewBottom = viewTop + container.clientHeight;
+
+    if (linkTop < viewTop || linkBottom > viewBottom) {
+      const centeredTop = Math.max(linkTop - container.clientHeight / 2 + activeLink.offsetHeight / 2, 0);
+      container.scrollTo({ top: centeredTop, behavior: 'smooth' });
+    }
+  }, [location.pathname, isOpen, isCollapsed]);
 
   const handleNavClick = () => {
     if (window.innerWidth < 1024) {
@@ -109,7 +130,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-4">
+        <div ref={navScrollRef} className="flex-1 overflow-y-auto px-3 py-4">
           <nav className="space-y-1.5">
             {links.map(({ to, label, Icon }) => (
               <NavLink

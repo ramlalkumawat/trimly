@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Instagram, Linkedin, UsersRound, Youtube } from 'lucide-react';
 import { footerSections, socialProfiles } from '../data/sitePages';
 
+// Icon links rendered for the "Follow" footer section.
 const socialLinks = [
   { icon: Instagram, href: socialProfiles.instagram.href, label: 'Instagram' },
   { icon: Youtube, href: socialProfiles.youtube.href, label: 'YouTube' },
@@ -10,6 +11,7 @@ const socialLinks = [
   { icon: UsersRound, href: socialProfiles.community.href, label: 'Community' }
 ];
 
+// Shared footer used on every user-app route with quick links and social handles.
 export default function Footer() {
   return (
     <footer className="relative mt-12 overflow-hidden bg-[#0b1225] text-slate-200">

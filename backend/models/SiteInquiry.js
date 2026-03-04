@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 
+// Stores contact/inquiry submissions from informational site pages in user app.
 const siteInquirySchema = new mongoose.Schema(
   {
+    // Tracks which static section form generated this inquiry.
     section: {
       type: String,
       enum: ['company', 'customers', 'professionals', 'follow'],
@@ -80,6 +82,7 @@ const siteInquirySchema = new mongoose.Schema(
       default: 'user-web'
     },
     requestMeta: {
+      // Best-effort request metadata for abuse detection and support tracing.
       ip: {
         type: String,
         trim: true,
@@ -97,6 +100,7 @@ const siteInquirySchema = new mongoose.Schema(
   }
 );
 
+// Recent-first and section-aware indexes for admin/support listing.
 siteInquirySchema.index({ createdAt: -1 });
 siteInquirySchema.index({ section: 1, slug: 1, createdAt: -1 });
 

@@ -33,6 +33,7 @@ import {
   Skeleton,
 } from '../components/ui/Loader';
 
+// Shared INR formatter for all monetary dashboard fields.
 const formatCurrency = (value) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -40,12 +41,14 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
+// Safe date formatter that avoids invalid date crashes in UI.
 const formatDate = (value, formatPattern) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '--';
   return format(date, formatPattern);
 };
 
+// Fallback chart data to keep graph shape stable when API has no entries.
 const EMPTY_WEEK_DATA = Array.from({ length: 7 }).map((_, idx) => {
   const date = subDays(new Date(), 6 - idx);
   return {
@@ -54,6 +57,7 @@ const EMPTY_WEEK_DATA = Array.from({ length: 7 }).map((_, idx) => {
   };
 });
 
+// Provider home dashboard with stats, trend chart, recent bookings, and claim actions.
 const Dashboard = () => {
   const navigate = useNavigate();
   const toast = useToast();
@@ -69,6 +73,7 @@ const Dashboard = () => {
 
   const showLoading = useDelayedLoading(loading, 350);
 
+  // Pulls dashboard summary + available requests + weekly earnings in parallel.
   const loadDashboard = useCallback(
     async ({ background = false } = {}) => {
       if (background) {
@@ -115,10 +120,12 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadDashboard();
+    // Background refresh keeps dashboard near real-time without manual reload.
     const intervalId = window.setInterval(() => loadDashboard({ background: true }), 60000);
     return () => window.clearInterval(intervalId);
   }, [loadDashboard]);
 
+  // Converts earnings records into chart points.
   const chartData = useMemo(() => {
     if (!weeklyEarnings.length) return EMPTY_WEEK_DATA;
     return weeklyEarnings.map((item) => ({
@@ -128,6 +135,7 @@ const Dashboard = () => {
     }));
   }, [weeklyEarnings]);
 
+  // Aggregates dashboard cards from API payload with sensible fallbacks.
   const stats = useMemo(() => {
     const totalBookings =
       dashboardData?.totalBookings ??
@@ -176,6 +184,7 @@ const Dashboard = () => {
     [dashboardData]
   );
 
+  // Claims an open booking request and refreshes panel data.
   const handleClaimBooking = useCallback(
     async (bookingId) => {
       try {

@@ -3,6 +3,7 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../utils/api';
 
+// Public screen for creating an admin account (used before login flow).
 export default function CreateAccount() {
   const [formData, setFormData] = useState({
     name: '',
@@ -19,8 +20,10 @@ export default function CreateAccount() {
   const [fieldErrors, setFieldErrors] = useState({});
   const navigate = useNavigate();
 
+  // Single computed message container for success/error alert UI.
   const alertMessage = useMemo(() => error || success || '', [error, success]);
 
+  // Updates one form field and clears its previous error state.
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -29,6 +32,7 @@ export default function CreateAccount() {
     }
   };
 
+  // Client-side form validation before account creation request.
   const validate = () => {
     const nextErrors = {};
 
@@ -56,6 +60,7 @@ export default function CreateAccount() {
     return Object.keys(nextErrors).length === 0;
   };
 
+  // Calls admin registration API and redirects to login on success.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');

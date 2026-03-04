@@ -1,5 +1,6 @@
 import React from 'react';
 
+// Hero illustration used on landing/services sections.
 export function HomeSticker() {
   return (
     <svg viewBox="0 0 320 240" className="w-full h-full" role="img" aria-label="Salon tools illustration">
@@ -24,6 +25,7 @@ export function HomeSticker() {
   );
 }
 
+// Auth-screen illustration shown on login/register/forgot-password pages.
 export function AuthSticker() {
   return (
     <svg viewBox="0 0 280 220" className="w-full h-full" role="img" aria-label="Beauty care illustration">
@@ -46,6 +48,7 @@ export function AuthSticker() {
   );
 }
 
+// Empty-state illustration used when service list has no data.
 export function EmptyStateSticker() {
   return (
     <svg viewBox="0 0 260 200" className="w-full h-full" role="img" aria-label="Empty services illustration">

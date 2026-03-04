@@ -17,6 +17,7 @@ import Badge from '../components/ui/Badge';
 import Card from '../components/ui/Card';
 import { CardSkeleton, EmptyState, ErrorState, InlineLoader, Skeleton } from '../components/ui/Loader';
 
+// Backward compatibility map for older URL query param names.
 const LEGACY_STATUS_TO_FILTER = {
   pending: 'pending',
   completed: 'completed',
@@ -24,12 +25,14 @@ const LEGACY_STATUS_TO_FILTER = {
   in_progress: 'all',
 };
 
+// Tabs available on bookings screen.
 const tabs = [
   { key: 'all', label: 'All' },
   { key: 'pending', label: 'Pending' },
   { key: 'completed', label: 'Completed' },
 ];
 
+// Standard currency formatter for booking totals.
 const formatCurrency = (value) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -37,12 +40,14 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
+// Safely formats booking date strings from API.
 const formatDate = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '--';
   return date.toLocaleDateString();
 };
 
+// Provider bookings management screen (pending, active, completed workflows).
 const Bookings = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -64,6 +69,7 @@ const Bookings = () => {
 
   const showLoading = useDelayedLoading(loading, 300);
 
+  // Loads bookings list according to currently active tab filter.
   const fetchBookings = useCallback(
     async ({ background = false } = {}) => {
       if (background) {
@@ -93,6 +99,7 @@ const Bookings = () => {
     fetchBookings();
   }, [fetchBookings]);
 
+  // Auto-scrolls to newest booking when list grows.
   useEffect(() => {
     if (bookings.length > previousCountRef.current && firstBookingRef.current) {
       firstBookingRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -102,6 +109,7 @@ const Bookings = () => {
     previousCountRef.current = bookings.length;
   }, [bookings]);
 
+  // Generic wrapper for accept/reject/start/complete actions.
   const updateBookingAction = useCallback(
     async (bookingId, actionType, apiCall, successTitle, successMessage) => {
       try {

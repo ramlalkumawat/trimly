@@ -5,6 +5,7 @@ import { clearAuthSession } from '../utils/auth';
 
 const linkBaseClass = 'text-sm font-medium transition-colors duration-200';
 
+// Top navigation used across user app with desktop + mobile auth-aware actions.
 export default function Navbar() {
   const nav = useNavigate();
   const location = useLocation();
@@ -12,6 +13,7 @@ export default function Navbar() {
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
 
+  // Show profile tab only for authenticated customer users.
   const navItems = useMemo(() => {
     const items = [
       { to: '/', label: 'Home' },
@@ -25,6 +27,7 @@ export default function Navbar() {
     return items;
   }, [token, role]);
 
+  // Centralized logout behavior shared by mobile and desktop buttons.
   const handleLogout = () => {
     clearAuthSession();
     setMobileOpen(false);

@@ -51,7 +51,7 @@ function AppContent() {
             path="/*"
             element={
               <AdminPrivateRoute>
-                <div className="min-h-screen bg-admin-app">
+                <div className="relative min-h-screen bg-admin-app">
                   <Sidebar
                     isOpen={sidebarOpen}
                     isCollapsed={sidebarCollapsed}
@@ -59,7 +59,9 @@ function AppContent() {
                     onToggleCollapse={toggleSidebarCollapsed}
                   />
                   <div
-                    className={`min-h-screen transition-[padding] duration-300 ease-out ${
+                    className={`relative min-h-screen transition-[padding] duration-300 ease-out ${
+                      sidebarOpen ? 'max-h-screen overflow-hidden lg:max-h-none lg:overflow-visible' : ''
+                    } ${
                       sidebarCollapsed ? 'lg:pl-24' : 'lg:pl-72'
                     }`}
                   >

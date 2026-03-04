@@ -2,6 +2,7 @@ import React from 'react';
 import { Clock3, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+// Handles service image rendering with graceful fallback when image is unavailable.
 function ServiceImage({ service }) {
   const imageSrc = service.image || service.imageUrl || service.thumbnail || null;
 
@@ -19,6 +20,7 @@ function ServiceImage({ service }) {
       alt={service.name}
       className="h-36 w-full rounded-xl object-cover border border-amber-200/60"
       loading="lazy"
+      // Hide broken images instead of showing browser broken-image icon.
       onError={(event) => {
         event.currentTarget.style.display = 'none';
       }}
@@ -26,6 +28,7 @@ function ServiceImage({ service }) {
   );
 }
 
+// Card used on services listing page for each bookable service.
 export default function ServiceCard({ service }) {
   const serviceId = service._id || service.id;
 

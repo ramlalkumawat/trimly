@@ -1,10 +1,12 @@
 import React from 'react';
 import { AlertCircle, Inbox, Loader2, RefreshCw } from 'lucide-react';
 
+// Generic shimmer block used while card content is still loading.
 export function Skeleton({ className = '' }) {
   return <div className={['animate-pulse rounded-xl bg-zinc-200/70', className].join(' ')} />;
 }
 
+// Inline loader for buttons and compact status areas.
 export function InlineLoader({ label = 'Loading...' }) {
   return (
     <span className="inline-flex items-center gap-2 text-sm text-zinc-500">
@@ -14,6 +16,7 @@ export function InlineLoader({ label = 'Loading...' }) {
   );
 }
 
+// Full section loader for pages/cards with delayed async content.
 export function PageLoader({ label = 'Loading data...' }) {
   return (
     <div className="flex min-h-[320px] items-center justify-center">
@@ -24,6 +27,7 @@ export function PageLoader({ label = 'Loading data...' }) {
   );
 }
 
+// Reusable card placeholder with configurable number of text rows.
 export function CardSkeleton({ rows = 3 }) {
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6">
@@ -37,6 +41,7 @@ export function CardSkeleton({ rows = 3 }) {
   );
 }
 
+// Empty-state container shown when API returns no records.
 export function EmptyState({ icon: Icon = Inbox, title, message, action }) {
   return (
     <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center shadow-sm">
@@ -48,6 +53,7 @@ export function EmptyState({ icon: Icon = Inbox, title, message, action }) {
   );
 }
 
+// Error-state UI used for hard failures or retry surfaces.
 export function ErrorState({ title = 'Something went wrong', message, onRetry, compact = false }) {
   return (
     <div

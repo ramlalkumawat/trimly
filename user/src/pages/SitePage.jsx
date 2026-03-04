@@ -3,11 +3,13 @@ import { Link, useParams } from 'react-router-dom';
 import SitePageLayout from '../components/site/SitePageLayout';
 import { resolveSitePage, sectionMeta } from '../data/sitePages';
 
+// Route wrapper for dynamic static-content pages like /company/:slug or /follow/:slug.
 export default function SitePage({ section }) {
   const { slug } = useParams();
   const page = resolveSitePage(section, slug);
   const metadata = sectionMeta[section];
 
+  // Keep browser tab title aligned with page SEO metadata.
   useEffect(() => {
     if (page?.seoTitle) {
       document.title = page.seoTitle;
@@ -16,6 +18,7 @@ export default function SitePage({ section }) {
     document.title = 'Trimly';
   }, [page]);
 
+  // Fallback UI when slug/section is invalid or content map has no matching page.
   if (!page || !metadata) {
     return (
       <section className="rounded-3xl border border-slate-100 bg-white p-8 text-center shadow-soft">

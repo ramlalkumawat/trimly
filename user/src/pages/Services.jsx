@@ -4,6 +4,7 @@ import ServiceCard from '../components/ServiceCard';
 import api from '../utils/api';
 import { EmptyStateSticker } from '../components/illustrations/SalonIllustrations';
 
+// Placeholder card shown while services API response is loading.
 function ServiceCardSkeleton() {
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 animate-pulse">
@@ -23,11 +24,13 @@ function ServiceCardSkeleton() {
   );
 }
 
+// Customer services listing page that drives the booking journey entry point.
 export default function Services() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Pulls active services from backend and handles loading/error states.
   const fetchServices = async () => {
     setLoading(true);
     setError('');

@@ -7,6 +7,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { CardSkeleton, EmptyState, ErrorState, InlineLoader, Skeleton } from '../components/ui/Loader';
 
+// Initial blank state for create/edit service modal form.
 const initialFormState = {
   name: '',
   category: '',
@@ -15,6 +16,7 @@ const initialFormState = {
   description: '',
 };
 
+// Provider service-catalog CRUD screen.
 const Services = () => {
   const toast = useToast();
   const [services, setServices] = useState([]);
@@ -29,6 +31,7 @@ const Services = () => {
 
   const showLoader = useDelayedLoading(loading, 300);
 
+  // Fetches current provider services from backend.
   const fetchServices = useCallback(
     async ({ background = false } = {}) => {
       if (background) {
@@ -57,6 +60,7 @@ const Services = () => {
 
   const modalTitle = useMemo(() => (editingService ? 'Edit Service' : 'Add Service'), [editingService]);
 
+  // Clears modal state when closing or after successful submit.
   const resetModal = () => {
     setOpenModal(false);
     setEditingService(null);
@@ -64,6 +68,7 @@ const Services = () => {
     setFormErrors({});
   };
 
+  // Opens modal in create mode with empty fields.
   const openCreateModal = () => {
     setEditingService(null);
     setFormState(initialFormState);
@@ -71,6 +76,7 @@ const Services = () => {
     setOpenModal(true);
   };
 
+  // Opens modal in edit mode and pre-fills selected service values.
   const openEditModal = (service) => {
     setEditingService(service);
     setFormState({
@@ -84,6 +90,7 @@ const Services = () => {
     setOpenModal(true);
   };
 
+  // Syncs controlled form state and clears field-specific validation errors.
   const handleInputChange = (event) => {
     const { name, value } = event.target;
     setFormState((prev) => ({ ...prev, [name]: value }));
@@ -92,6 +99,7 @@ const Services = () => {
     }
   };
 
+  // Client-side validation before create/update API calls.
   const validateForm = () => {
     const nextErrors = {};
     if (!formState.name.trim()) nextErrors.name = 'Service name is required.';
@@ -103,6 +111,7 @@ const Services = () => {
     return Object.keys(nextErrors).length === 0;
   };
 
+  // Creates or updates a service based on whether edit mode is active.
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!validateForm()) return;
@@ -134,6 +143,7 @@ const Services = () => {
     }
   };
 
+  // Deletes a provider service after user confirmation.
   const handleDeleteService = async (serviceId) => {
     if (!window.confirm('Delete this service permanently?')) return;
 

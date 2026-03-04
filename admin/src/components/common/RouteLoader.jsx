@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
+// Suspense fallback used while lazy-loaded admin routes are fetched.
 export default function RouteLoader() {
   return (
     <div className="flex min-h-[40vh] items-center justify-center">

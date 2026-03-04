@@ -4,9 +4,11 @@ import { ArrowRight, CheckCircle2, ChevronDown } from 'lucide-react';
 import { fieldDefinitions } from '../../data/sitePages';
 import api from '../../utils/api';
 
+// Shared template for informational site pages (company/customers/professionals/follow).
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^\+?[0-9\s()-]{8,20}$/;
 
+// Creates empty form object based on current page's configured form fields.
 function buildInitialValues(fields) {
   return fields.reduce((acc, fieldKey) => {
     acc[fieldKey] = '';
@@ -14,6 +16,7 @@ function buildInitialValues(fields) {
   }, {});
 }
 
+// Renders CTA as internal route link or external anchor depending on config.
 function ActionButton({ action, className, children }) {
   if (!action?.to) {
     return null;
@@ -34,6 +37,7 @@ function ActionButton({ action, className, children }) {
   );
 }
 
+// Decorative hero SVG used by all site pages for visual consistency.
 function HeroIllustration() {
   return (
     <svg viewBox="0 0 420 280" className="w-full h-full" role="img" aria-label="Trimly platform illustration">
@@ -72,6 +76,7 @@ export default function SitePageLayout({ page, sectionKey, slug, sectionLabel, s
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Reset local form/UI state whenever page config changes.
   useEffect(() => {
     setValues(initialValues);
     setErrors({});
@@ -82,6 +87,7 @@ export default function SitePageLayout({ page, sectionKey, slug, sectionLabel, s
     setOpenFaq(0);
   }, [initialValues, page.title]);
 
+  // Validates dynamic form fields according to per-field constraints.
   const validateForm = () => {
     const nextErrors = {};
 
@@ -117,6 +123,7 @@ export default function SitePageLayout({ page, sectionKey, slug, sectionLabel, s
     return Object.keys(nextErrors).length === 0;
   };
 
+  // Updates one form field and clears only that field's existing error.
   const handleChange = (fieldKey, fieldValue) => {
     setValues((prev) => ({
       ...prev,
@@ -131,6 +138,7 @@ export default function SitePageLayout({ page, sectionKey, slug, sectionLabel, s
     }
   };
 
+  // Submits inquiry payload to backend /site/inquiries endpoint.
   const handleSubmit = async (event) => {
     event.preventDefault();
     setSubmitted(false);
@@ -141,6 +149,7 @@ export default function SitePageLayout({ page, sectionKey, slug, sectionLabel, s
     }
 
     const payload = {
+      // Metadata helps backend identify the exact content page form source.
       section: sectionKey,
       slug,
       pageTitle: page.title,

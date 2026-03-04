@@ -8,6 +8,7 @@ import { clearAuthSession } from '../utils/auth';
 
 const phoneRegex = /^\+?[0-9\s()-]{8,20}$/;
 
+// Combined login/register screen for customer accounts in user app.
 export default function Login() {
   const location = useLocation();
   const [phone, setPhone] = useState('');
@@ -30,6 +31,7 @@ export default function Login() {
     [isRegister]
   );
 
+  // Client-side validation keeps API errors cleaner and gives instant feedback.
   const validateForm = () => {
     const nextErrors = {};
 
@@ -53,11 +55,13 @@ export default function Login() {
     return Object.keys(nextErrors).length === 0;
   };
 
+  // Clears global and field-level form messages before each submit attempt.
   const resetFormState = () => {
     setError('');
     setFieldErrors({});
   };
 
+  // Handles both register and login API calls based on current screen mode.
   const handleSubmit = async (e) => {
     e.preventDefault();
     resetFormState();
@@ -72,6 +76,7 @@ export default function Login() {
       const payload = isRegister ? { name: name.trim(), phone: phone.trim(), password } : { phone: phone.trim(), password };
       const res = await api.post(url, payload);
 
+      // User app only allows role === "user"; other roles must use their own panels.
       const { token, user } = res.data.data;
       if (user.role !== 'user') {
         clearAuthSession();

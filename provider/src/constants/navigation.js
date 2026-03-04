@@ -6,6 +6,7 @@ import {
   UserCircle2,
 } from 'lucide-react';
 
+// Sidebar navigation items shared by desktop sidebar and mobile navigation UI.
 export const NAV_ITEMS = [
   {
     key: 'dashboard',
@@ -39,6 +40,7 @@ export const NAV_ITEMS = [
   },
 ];
 
+// Reduced navigation set for small screens to avoid overcrowding the bottom nav.
 export const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) =>
   ['dashboard', 'bookings', 'earnings', 'profile'].includes(item.key)
 );

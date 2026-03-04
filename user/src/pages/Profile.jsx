@@ -16,6 +16,7 @@ import api from '../utils/api';
 import useSocket from '../hooks/useSocket';
 import { clearAuthSession } from '../utils/auth';
 
+// Booking timeline steps used to visualize progress in customer booking history.
 const BOOKING_STEPS = [
   { key: 'pending', label: 'Requested' },
   { key: 'accepted', label: 'Accepted' },
@@ -23,6 +24,7 @@ const BOOKING_STEPS = [
   { key: 'completed', label: 'Completed' }
 ];
 
+// UI metadata map for each booking status (badge color, hint, progress step index).
 const STATUS_META = {
   pending: {
     label: 'Pending',
@@ -72,6 +74,7 @@ const getStatusMeta = (status) => STATUS_META[status] || STATUS_META.pending;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^\+?[0-9\s()-]{8,20}$/;
 
+// Reads cached user safely to prevent JSON parse crashes.
 const parseLocalUser = () => {
   try {
     return JSON.parse(localStorage.getItem('user') || '{}');
@@ -80,6 +83,7 @@ const parseLocalUser = () => {
   }
 };
 
+// Normalizes profile shape from API/localStorage so UI can rely on stable keys.
 const normalizeProfile = (raw = {}) => {
   const firstName = String(raw.firstName || '').trim();
   const lastName = String(raw.lastName || '').trim();
@@ -98,6 +102,7 @@ const normalizeProfile = (raw = {}) => {
   };
 };
 
+// Formats booking schedule timestamp for cards.
 const formatDateTime = (booking) => {
   const source = booking.scheduledTime || booking.date;
   const value = new Date(source);
@@ -114,6 +119,7 @@ const formatCurrency = (amount = 0) =>
     maximumFractionDigits: 2
   }).format(Number(amount || 0));
 
+// Formats join date shown in profile summary section.
 const formatMemberSince = (value) => {
   if (!value) return 'N/A';
   const date = new Date(value);
@@ -121,6 +127,7 @@ const formatMemberSince = (value) => {
   return date.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 };
 
+// Unified customer profile + booking history screen with realtime status updates.
 export default function Profile() {
   const nav = useNavigate();
   const location = useLocation();
@@ -156,12 +163,14 @@ export default function Profile() {
   const displayName = profileData.name || localUser.name || 'User';
   const displayContact = profileData.email || profileData.phone || '';
 
+  // Keeps local cached user in sync after profile API updates.
   const syncLocalStorageUser = (rawUser = {}) => {
     const previous = parseLocalUser();
     const next = { ...previous, ...rawUser };
     localStorage.setItem('user', JSON.stringify(next));
   };
 
+  // Applies normalized profile object to both read-only and editable states.
   const applyProfileData = (raw = {}) => {
     const normalized = normalizeProfile(raw);
     setProfileData(normalized);
@@ -169,6 +178,7 @@ export default function Profile() {
     return normalized;
   };
 
+  // Loads current user's bookings for history and status tracking.
   const fetchBookings = async () => {
     setLoadingBookings(true);
     setBookingError('');
@@ -182,6 +192,7 @@ export default function Profile() {
     }
   };
 
+  // Loads profile details from backend.
   const fetchProfile = async () => {
     setProfileLoading(true);
     setProfileError('');
@@ -201,12 +212,14 @@ export default function Profile() {
     fetchProfile();
   }, []);
 
+  // Optional navigation helper: scroll to top when redirected from other pages.
   useEffect(() => {
     if (location.state?.scrollToTop) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [location.state]);
 
+  // Join/leave socket rooms for each booking so updates are scoped to relevant records.
   useEffect(() => {
     bookings.forEach((booking) => joinBookingRoom(booking._id));
     return () => {
@@ -214,6 +227,7 @@ export default function Profile() {
     };
   }, [bookings, joinBookingRoom, leaveBookingRoom]);
 
+  // Applies realtime socket payload into local booking list.
   const updateBookingFromSocket = (payload, defaultNotice = 'Booking updated') => {
     if (!payload?.booking?._id) return;
     setBookings((prev) =>
@@ -247,6 +261,7 @@ export default function Profile() {
     }
   }, [bookingRejected, clearEvent]);
 
+  // Allows customer to cancel only cancellable bookings.
   const handleCancelBooking = async (bookingId) => {
     setCancellingId(bookingId);
     setBookingError('');
@@ -265,6 +280,7 @@ export default function Profile() {
     }
   };
 
+  // Validates editable profile fields before PUT /user/profile.
   const validateProfile = () => {
     const nextErrors = {};
     const firstName = profileForm.firstName.trim();
@@ -291,6 +307,7 @@ export default function Profile() {
     return Object.keys(nextErrors).length === 0;
   };
 
+  // Updates one form field and clears that field's validation error.
   const handleProfileChange = (field, value) => {
     setProfileForm((prev) => ({ ...prev, [field]: value }));
     if (fieldErrors[field]) {
@@ -302,6 +319,7 @@ export default function Profile() {
     }
   };
 
+  // Persists profile updates and refreshes local cache/state.
   const handleProfileSave = async (event) => {
     event.preventDefault();
     setProfileError('');
@@ -337,6 +355,7 @@ export default function Profile() {
     }
   };
 
+  // Opens edit mode and clears stale alerts/errors.
   const startEditProfile = () => {
     setIsEditingProfile(true);
     setProfileError('');
@@ -344,6 +363,7 @@ export default function Profile() {
     setFieldErrors({});
   };
 
+  // Resets edit form back to last saved profile values.
   const cancelEditProfile = () => {
     setIsEditingProfile(false);
     setProfileForm(profileData);
@@ -351,6 +371,7 @@ export default function Profile() {
     setProfileError('');
   };
 
+  // Local logout for customer app.
   const handleLogout = () => {
     clearAuthSession();
     nav('/login', { replace: true });

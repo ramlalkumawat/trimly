@@ -2,10 +2,12 @@ import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// Reusable back button with fallback route when browser history has no previous page.
 export default function BackNavButton({ fallback = '/services', label = 'Back' }) {
   const nav = useNavigate();
 
   const handleBack = () => {
+    // Use browser back when possible; otherwise land on a safe app route.
     if (window.history.length > 1) {
       nav(-1);
       return;

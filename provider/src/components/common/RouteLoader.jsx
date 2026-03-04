@@ -1,6 +1,7 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 
+// Lightweight fallback while route-level code-split bundles are loading.
 export default function RouteLoader() {
   return (
     <div className="flex min-h-[40vh] items-center justify-center">

@@ -5,6 +5,7 @@ import Input from '../components/Input';
 import api from '../utils/api';
 import { AuthSticker } from '../components/illustrations/SalonIllustrations';
 
+// Simple forgot-password request screen supporting email or phone identifier.
 export default function ForgotPassword() {
   const [loginId, setLoginId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -12,6 +13,7 @@ export default function ForgotPassword() {
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
+  // Submits password-reset request payload to backend.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -24,6 +26,7 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
+      // Backend accepts either email or phone field.
       const value = loginId.trim();
       const payload = value.includes('@') ? { email: value.toLowerCase() } : { phone: value };
       const response = await api.post('/auth/forgot-password', payload);

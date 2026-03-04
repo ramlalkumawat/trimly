@@ -24,6 +24,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { CardSkeleton, EmptyState, ErrorState, InlineLoader, Skeleton } from '../components/ui/Loader';
 
+// Preset date filters available in earnings screen.
 const RANGE_OPTIONS = [
   { value: '7d', label: 'Last 7 days' },
   { value: '30d', label: 'Last 30 days' },
@@ -31,6 +32,7 @@ const RANGE_OPTIONS = [
   { value: 'month', label: 'This month' },
 ];
 
+// Currency formatter used across summary cards, chart tooltip, and tables.
 const formatCurrency = (value) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -38,6 +40,7 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
+// Converts a selected range key to [startDate, endDate].
 const resolveDateRange = (range) => {
   const now = new Date();
   switch (range) {
@@ -52,6 +55,7 @@ const resolveDateRange = (range) => {
   }
 };
 
+// Provider earnings page: summary, chart, transactions, and CSV export.
 const Earnings = () => {
   const toast = useToast();
   const [range, setRange] = useState('30d');
@@ -62,6 +66,7 @@ const Earnings = () => {
 
   const showLoading = useDelayedLoading(loading, 300);
 
+  // Fetches earnings data from backend for selected range.
   const fetchEarnings = useCallback(
     async ({ background = false } = {}) => {
       if (background) {
@@ -93,6 +98,7 @@ const Earnings = () => {
     fetchEarnings();
   }, [fetchEarnings]);
 
+  // Computes totals, average ticket, and month-over-month growth for stat cards.
   const monthlySummaries = useMemo(() => {
     const monthly = Array.isArray(earningsData?.monthlyEarnings) ? earningsData.monthlyEarnings : [];
     const sorted = [...monthly].sort((a, b) => new Date(a.month) - new Date(b.month));
@@ -115,6 +121,7 @@ const Earnings = () => {
     };
   }, [earningsData]);
 
+  // Formats backend monthly records into chart-friendly points.
   const chartData = useMemo(() => {
     const monthly = Array.isArray(earningsData?.monthlyEarnings) ? earningsData.monthlyEarnings : [];
     return monthly.map((entry) => ({
@@ -129,6 +136,7 @@ const Earnings = () => {
     [earningsData]
   );
 
+  // Builds and downloads CSV from currently loaded recent transactions.
   const handleDownloadReport = () => {
     const rows = [
       ['Date', 'Customer', 'Service', 'Amount', 'Status'],

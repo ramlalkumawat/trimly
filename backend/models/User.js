@@ -64,6 +64,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Password reset fields for secure reset flow
+  passwordResetToken: {
+    type: String,
+    default: null // Only set during password reset request
+  },
+  passwordResetExpires: {
+    type: Date,
+    default: null // Token expiration time
+  },
   role: {
     type: String,
     enum: ['user', 'provider', 'admin'],
@@ -183,6 +192,43 @@ userSchema.statics.hashPassword = async function hashPassword(plainPassword = ''
 // Password verification helper used in auth login flow.
 userSchema.methods.comparePassword = function comparePassword(plainPassword = '') {
   return bcrypt.compare(String(plainPassword || ''), this.password || '');
+};
+
+// Generate secure password reset token
+// Returns the plain token for sending to user, stores hashed token in DB
+userSchema.methods.generatePasswordResetToken = function generatePasswordResetToken() {
+  const crypto = require('crypto');
+  
+  // Generate a random token (32 bytes = 64 hex chars)
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  
+  // Hash the token for storage (optional but recommended for additional security)
+  this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  
+  // Set expiration to 1 hour from now
+  this.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+  
+  return resetToken; // Return unhashed token to send to user
+};
+
+// Verify password reset token
+// Can be called on a user document to validate a reset token
+userSchema.methods.verifyPasswordResetToken = function verifyPasswordResetToken(token) {
+  const crypto = require('crypto');
+  
+  // Hash the provided token to compare with stored hash
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  
+  // Check if token matches and hasn't expired
+  if (this.passwordResetToken !== hashedToken) {
+    return false;
+  }
+  
+  if (!this.passwordResetExpires || this.passwordResetExpires < Date.now()) {
+    return false;
+  }
+  
+  return true;
 };
 
 module.exports = mongoose.model('User', userSchema);

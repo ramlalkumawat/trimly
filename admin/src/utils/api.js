@@ -63,6 +63,7 @@ export const adminAPI = {
     createAccount: (userData) => api.post('/auth/register', { ...userData, role: 'admin' }),
     login: (credentials) => api.post('/auth/login', credentials),
     forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+    resetPassword: (data) => api.post('/auth/reset-password', data),
     logout: () => api.post('/auth/logout'),
     refreshToken: () => api.post('/auth/refresh'),
   },

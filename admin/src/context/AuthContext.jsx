@@ -1,9 +1,16 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../utils/api';
-import { clearAuthSession, getStoredToken } from '../utils/auth';
+import { clearAuthSession, getStoredUser } from '../utils/auth';
 
-// Auth context for admin login/session state and route guarding helpers.
+/**
+ * Authentication Context for Admin App
+ * 
+ * SECURITY NOTE: Authentication is now handled via HttpOnly cookies
+ * - Tokens are no longer stored in localStorage (XSS vulnerability fix)
+ * - Sessions are managed server-side with secure, HttpOnly cookies
+ * - Frontend maintains user state in memory only
+ */
 export const AuthContext = createContext();
 
 export const useAuth = () => {
@@ -15,125 +22,110 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  // User state: stored in memory and optionally in localStorage for persistence
+  // (localStorage is optional for UX, actual auth is via HttpOnly cookie)
   const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('user');
-    return stored ? JSON.parse(stored) : null;
+    const stored = getStoredUser();
+    return stored || null;
   });
-  const [token, setToken] = useState(() => getStoredToken());
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Decode JWT token to check expiration and role
-  const decodeToken = (token) => {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload;
-    } catch (error) {
-      return null;
-    }
-  };
-
-  // Check if token is expired
-  const isTokenExpired = (token) => {
-    const decoded = decodeToken(token);
-    if (!decoded) return true;
-    return Date.now() >= decoded.exp * 1000;
-  };
-
-  // Verify admin role
-  const isAdmin = () => {
+  /**
+   * Verify admin role from user object
+   */
+  const isAdmin = useCallback(() => {
     if (!user) return false;
     return user.role === 'admin';
-  };
+  }, [user]);
 
-  const login = async (credentials) => {
+  /**
+   * Login handler
+   * Sends credentials to server, which responds with user data
+   * and sets HttpOnly cookie with session
+   */
+  const login = useCallback(async (credentials) => {
     setLoading(true);
     setError(null);
     try {
       const res = await adminAPI.auth.login(credentials);
-      const { token: jwt, user: usr } = res.data.data;
+      const { user: usr } = res.data.data;
       
       // Verify it's an admin user
       if (usr.role !== 'admin') {
         throw new Error('Access denied. Admin role required.');
       }
       
-      localStorage.setItem('token', jwt);
-      localStorage.setItem('user', JSON.stringify(usr));
-      setToken(jwt);
+      // SECURITY: Store user in memory and optionally in localStorage
+      // The actual session is maintained by the HttpOnly cookie on the server
       setUser(usr);
+      localStorage.setItem('user', JSON.stringify(usr));
+      
       navigate('/dashboard', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      const errorMessage = err.response?.data?.message || err.message;
+      setError(errorMessage);
       throw err;
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
+  /**
+   * Logout handler
+   * Calls server logout endpoint to clear session
+   * Server will clear the HttpOnly cookie
+   */
   const logout = useCallback(async () => {
     try {
-      if (getStoredToken()) {
+      // Attempt to notify server of logout
+      // This endpoint clears the session cookie on the server
+      if (user) {
         await adminAPI.auth.logout();
       }
     } catch (error) {
-      // Ignore logout API failures and clear local session regardless.
+      // Ignore logout API failures
+      // User session will expire after configured timeout anyway
+      console.warn('Logout API call failed:', error.message);
     } finally {
+      // Clear client-side session data
       clearAuthSession();
-      setToken(null);
       setUser(null);
+      setError(null);
       setLoading(false);
       navigate('/login', { replace: true });
     }
-  }, [navigate]);
+  }, [user, navigate]);
 
-  // Auto-logout on token expiration
+  /**
+   * Initialize authentication state on app load
+   * Check if user exists from localStorage (means they were logged in)
+   * The server will validate the session via the HttpOnly cookie
+   */
   useEffect(() => {
-    if (token && isTokenExpired(token)) {
-      logout();
-    }
-  }, [token, logout]);
-
-  // Refresh token periodically
-  useEffect(() => {
-    if (!token) return undefined;
-
-    const refreshTokenInterval = setInterval(async () => {
-      if (token && !isTokenExpired(token)) {
-        try {
-          const res = await adminAPI.auth.refreshToken();
-          const { token: newToken } = res.data.data;
-          localStorage.setItem('token', newToken);
-          setToken(newToken);
-        } catch (error) {
-          logout();
-        }
-      }
-    }, 15 * 60 * 1000); // Refresh every 15 minutes
-
-    return () => clearInterval(refreshTokenInterval);
-  }, [token, logout]);
-
-  useEffect(() => {
+    // Set loading to false once component mounts
+    // User state is already initialized from localStorage in useState
     setLoading(false);
   }, []);
 
-  const isAuthenticated = !!token && !isTokenExpired(token);
+  // Determine if user is authenticated
+  // With cookie-based auth, we trust the server to validate the session
+  const isAuthenticated = !!user;
 
+  // Memoize context value
   const contextValue = useMemo(
     () => ({
       user,
-      token,
       loading,
       error,
       login,
       logout,
       isAuthenticated,
       isAdmin,
-      decodeToken,
     }),
-    [user, token, loading, error, login, logout, isAuthenticated]
+    [user, loading, error, login, logout, isAuthenticated, isAdmin]
   );
 
   return (

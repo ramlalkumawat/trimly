@@ -23,6 +23,7 @@ const Profile = lazy(() => import('./pages/admin/Profile'));
 const Login = lazy(() => import('./pages/Login'));
 const CreateAccount = lazy(() => import('./pages/CreateAccount'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 
 // Main admin app shell: public auth routes + protected dashboard routes.
 function AppContent() {
@@ -47,6 +48,7 @@ function AppContent() {
           <Route path="/login" element={<Login />} />
           <Route path="/create-account" element={<CreateAccount />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/*"
             element={
